@@ -94,6 +94,32 @@ class Crater:
         # Show result
         plt.show()
 
+    def _compute_extremes(self):
+        dydx = np.gradient(self.profile, self.profile_distance)
+        extrema_indices = np.where(np.diff(np.sign(dydx)))[0]
+
+        print(self.profile)
+
+        # Get the indices that would sort y in ascending order
+        sorted_indices = np.argsort(self.profile[extrema_indices])
+        smallest_indices = sorted_indices[:2]
+        largest_indices = sorted_indices[-2:]
+
+        # Select the corresponding elements from the extrema indices
+        selected_subindices = np.concatenate([smallest_indices, largest_indices])
+        selected_indices = extrema_indices[selected_subindices]
+        self.t1, self.b1, self.b2, self.t2 = np.sort(selected_indices)
+
+    def _compute_slopes(self):
+        p1 = np.polyfit(
+            self.profile_distance[self.t1 : self.b1], self.profile[self.t1 : self.b1], 1
+        )
+        self.slope1 = np.poly1d(p1)
+        p2 = np.polyfit(
+            self.profile_distance[self.b2 : self.t2], self.profile[self.b2 : self.t2], 1
+        )
+        self.slope2 = np.poly1d(p2)
+
     def plot_3D(
         self,
         title: str,
@@ -110,7 +136,7 @@ class Crater:
         self,
         start_point: tuple[int, int],
         end_point: tuple[int, int],
-        total_points: int = 1000
+        total_points: int = 1000,
     ):
         # Extract the line
         x0, y0 = start_point  # These are in _pixel_ coordinates!!
@@ -121,7 +147,7 @@ class Crater:
         zi = scipy.ndimage.map_coordinates(
             self.image_crater, np.vstack((x, y))
         ).flatten()
-        self.profile = list(self.image_depth * zi)
+        self.profile = self.image_depth * zi
 
         dx, dy = x1 - x0, y1 - y0
 
@@ -130,12 +156,11 @@ class Crater:
         )
 
         self.profile_bounds = [[x0, x1], [y0, y1]]
+        self._compute_extremes()
+        self._compute_slopes()
 
-    def plot_profile(
-        self,
-        title: str
-    ):
-        if self.profile:
+    def plot_profile(self, title: str):
+        if self.profile is not None:
             # -- Plot...
             fig, axes = plt.subplots(ncols=2, figsize=(11, 5))
             axes[0].imshow(self.image_crater)
@@ -147,9 +172,31 @@ class Crater:
 
             axes[1].plot(self.profile_distance, self.profile)
             axes[1].set_title("Profile View of the crater", fontweight="bold")
+            axes[1].plot(
+                [self.profile_distance[self.t1], self.profile_distance[self.b1]],
+                [
+                    self.slope1(self.profile_distance[self.t1]),
+                    self.slope1(self.profile_distance[self.b1]),
+                ],
+                color="blue",
+                linestyle="--",
+            )
+            axes[1].plot(
+                [self.profile_distance[self.t2], self.profile_distance[self.b2]],
+                [
+                    self.slope2(self.profile_distance[self.t2]),
+                    self.slope2(self.profile_distance[self.b2]),
+                ],
+                color="blue",
+                linestyle="--",
+            )
             axes[1].set_ylabel("Depth [mm]", fontweight="bold")
-            axes[1].set_xlabel("Distance [mm]", fontweight="bold")
+            axes[1].set_xlabel("Distance [mm]", fontweight="bold") 
+            selected_indices = np.array([self.t1, self.b1, self.b2, self.t2])
+            axes[1].scatter(self.profile_distance[selected_indices], self.profile[selected_indices])
 
             plt.show()
         else:
-            print('No profile has been set yet. You need to call ´Crater.set_profile´ first')
+            print(
+                "No profile has been set yet. You need to call ´Crater.set_profile´ first"
+            )
