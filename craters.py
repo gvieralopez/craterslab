@@ -11,7 +11,7 @@ class Crater:
         image_before: np.ndarray,
         image_after: np.ndarray,
         image_resolution: float,
-        image_depth: float
+        image_depth: float,
     ):
         self.image_before = image_before
         self.image_after = image_after
@@ -21,13 +21,36 @@ class Crater:
 
         self.image_crater = self._compute_crater_image()
 
-    def _compute_crater_image(self) -> np.ndarray:
-        # TODO: Crop resulting image to the effective crater region
-        return self.image_before - self.image_after
+    def _compute_crater_image(self, diff_threshold: int = 3, padding: int = 20) -> np.ndarray:
+        # Compute the difference
+        diff = self.image_before - self.image_after
+        h_max, w_max = diff.shape
+
+        # Threshold the image
+        _, thresh = cv2.threshold(diff, -diff_threshold, diff_threshold, cv2.THRESH_BINARY_INV)
+        thresh = thresh.astype(np.uint8)
+
+        # Find the contours of the binary image
+        contours, _ = cv2.findContours(
+            thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        # Find the contour with the largest area
+        largest_contour = max(contours, key=cv2.contourArea)
+
+        # Find the bounding rectangle of the largest contour
+        x, y, w, h = cv2.boundingRect(largest_contour)
+
+        # Crop the original image using the coordinates of the bounding rectangle
+        y0 = max(0, y - padding)
+        ym = min(h_max, y + h + padding)
+        x0 = max(0, x - padding)
+        xm = max(w_max, x + w + padding)
+        return diff[y0 : ym, x0 : xm]
 
     def _create_mesh(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        x = np.arange(0, self.image_crater.shape[0] * self.scale[0], self.scale[0])
-        y = np.arange(0, self.image_crater.shape[1] * self.scale[1], self.scale[1])
+        y = np.arange(0, self.image_crater.shape[0] * self.scale[0], self.scale[0])
+        x = np.arange(0, self.image_crater.shape[1] * self.scale[1], self.scale[1])
         X, Y = np.meshgrid(x, y)
         # TODO: Evaluate wether to to this here or elsewhere
         Z = self.image_crater * self.scale[2]
@@ -92,11 +115,15 @@ class Crater:
         x, y = np.linspace(x0, x1, total_points), np.linspace(y0, y1, total_points)
 
         # Extract the values along the line, using cubic interpolation
-        zi = scipy.ndimage.map_coordinates(self.image_crater, np.vstack((x, y))).flatten()
+        zi = scipy.ndimage.map_coordinates(
+            self.image_crater, np.vstack((x, y))
+        ).flatten()
         zi = list(self.image_depth * zi)
         dx = end_point[0] - start_point[0]
         dy = end_point[1] - start_point[1]
-        distance = np.linspace(0, self.image_resolution * np.sqrt(dx**2 + dy**2), len(zi))
+        distance = np.linspace(
+            0, self.image_resolution * np.sqrt(dx**2 + dy**2), len(zi)
+        )
 
         # -- Plot...
         fig, axes = plt.subplots(ncols=2, figsize=(11, 5))

@@ -18,6 +18,6 @@ c.plot_3D(title='Crater view in 3D', preview_scale=preview_scale)
 
 # Plot a transversal cut of the crater
 start_point = (0, 0)
-end_point = (150, 150)
+end_point = (100, 100)
 c.plot_profile('Crater profile', start_point, end_point)
 
