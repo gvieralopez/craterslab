@@ -20,6 +20,7 @@ class Crater:
         self.scale = (image_resolution, image_resolution, image_depth)
 
         self.image_crater = self._compute_crater_image()
+        self._compute_landmark_points()
         self.profile = None
         self.profile_distance = None
 
@@ -94,11 +95,34 @@ class Crater:
         # Show result
         plt.show()
 
+    def _compute_profile(
+        self,
+        start_point: tuple[int, int],
+        end_point: tuple[int, int],
+        total_points: int,
+    ):
+        # Extract the line
+        x0, y0 = start_point  # These are in _pixel_ coordinates!!
+        x1, y1 = end_point
+        x, y = np.linspace(x0, x1, total_points), np.linspace(y0, y1, total_points)
+
+        # Extract the values along the line, using cubic interpolation
+        zi = scipy.ndimage.map_coordinates(
+            self.image_crater, np.vstack((x, y))
+        ).flatten()
+        self.profile = self.image_depth * zi
+
+        dx, dy = x1 - x0, y1 - y0
+
+        self.profile_distance = np.linspace(
+            0, self.image_resolution * np.sqrt(dx**2 + dy**2), len(self.profile)
+        )
+
+        self.profile_bounds = [[x0, x1], [y0, y1]]
+
     def _compute_extremes(self):
         dydx = np.gradient(self.profile, self.profile_distance)
         extrema_indices = np.where(np.diff(np.sign(dydx)))[0]
-
-        print(self.profile)
 
         # Get the indices that would sort y in ascending order
         sorted_indices = np.argsort(self.profile[extrema_indices])
@@ -109,6 +133,18 @@ class Crater:
         selected_subindices = np.concatenate([smallest_indices, largest_indices])
         selected_indices = extrema_indices[selected_subindices]
         self.t1, self.b1, self.b2, self.t2 = np.sort(selected_indices)
+    
+    def _compute_landmark_points(self):
+        yf, xf = self.image_crater.shape
+        ym, xm = map(lambda x: x//2, [yf, xf])
+        pix = lambda x : int(self.profile_distance[x] / self.image_resolution)
+
+        self.set_profile((0,ym), (xf, ym))
+        self.landmarks = [(pix(self.t1), ym), (pix(self.t2), ym)]
+        self.set_profile((xm,0), (xm, yf))
+        self.landmarks += [(xm, pix(self.t1)), (xm, pix(self.t2))]
+
+        print(self.landmarks)
 
     def _compute_slopes(self):
         p1 = np.polyfit(
@@ -138,24 +174,7 @@ class Crater:
         end_point: tuple[int, int],
         total_points: int = 1000,
     ):
-        # Extract the line
-        x0, y0 = start_point  # These are in _pixel_ coordinates!!
-        x1, y1 = end_point
-        x, y = np.linspace(x0, x1, total_points), np.linspace(y0, y1, total_points)
-
-        # Extract the values along the line, using cubic interpolation
-        zi = scipy.ndimage.map_coordinates(
-            self.image_crater, np.vstack((x, y))
-        ).flatten()
-        self.profile = self.image_depth * zi
-
-        dx, dy = x1 - x0, y1 - y0
-
-        self.profile_distance = np.linspace(
-            0, self.image_resolution * np.sqrt(dx**2 + dy**2), len(self.profile)
-        )
-
-        self.profile_bounds = [[x0, x1], [y0, y1]]
+        self._compute_profile(start_point, end_point, total_points)
         self._compute_extremes()
         self._compute_slopes()
 
@@ -168,6 +187,9 @@ class Crater:
             axes[0].set_ylabel("Y [px]", fontweight="bold")
             axes[0].set_title("Top View of the crater", fontweight="bold")
             axes[0].plot(*self.profile_bounds, "ro-")
+            axes[0].scatter(
+                *list(zip(*self.landmarks))
+            )
             axes[0].axis("image")
 
             axes[1].plot(self.profile_distance, self.profile)
@@ -191,9 +213,11 @@ class Crater:
                 linestyle="--",
             )
             axes[1].set_ylabel("Depth [mm]", fontweight="bold")
-            axes[1].set_xlabel("Distance [mm]", fontweight="bold") 
+            axes[1].set_xlabel("Distance [mm]", fontweight="bold")
             selected_indices = np.array([self.t1, self.b1, self.b2, self.t2])
-            axes[1].scatter(self.profile_distance[selected_indices], self.profile[selected_indices])
+            axes[1].scatter(
+                self.profile_distance[selected_indices], self.profile[selected_indices]
+            )
 
             plt.show()
         else:
