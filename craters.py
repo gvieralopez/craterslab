@@ -1,3 +1,4 @@
+import math
 import cv2
 import scipy.ndimage
 import numpy as np
@@ -133,16 +134,42 @@ class Crater:
         selected_subindices = np.concatenate([smallest_indices, largest_indices])
         selected_indices = extrema_indices[selected_subindices]
         self.t1, self.b1, self.b2, self.t2 = np.sort(selected_indices)
-    
-    def _compute_landmark_points(self):
-        yf, xf = self.image_crater.shape
-        ym, xm = map(lambda x: x//2, [yf, xf])
-        pix = lambda x : int(self.profile_distance[x] / self.image_resolution)
 
-        self.set_profile((0,ym), (xf, ym))
-        self.landmarks = [(pix(self.t1), ym), (pix(self.t2), ym)]
-        self.set_profile((xm,0), (xm, yf))
-        self.landmarks += [(xm, pix(self.t1)), (xm, pix(self.t2))]
+    def _compute_profile_bounds(self, i, angle_diff, center_x, center_y):
+        angle = i * angle_diff
+        max_radius = min(center_x / np.abs(np.cos(angle)), center_y / np.abs(np.sin(angle)))
+        x0 = int(round(center_x + max_radius * np.cos(angle)))
+        y0 = int(round(center_y + max_radius * np.sin(angle)))
+        xf = int(round(center_x + max_radius * np.cos(angle + np.pi)))
+        yf = int(round(center_y + max_radius * np.sin(angle + np.pi)))
+        return [(x0, y0), (xf, yf)]
+
+    def _compute_landmark_points(self, points: int = 10):
+        assert points % 2 == 0
+        M, N = self.image_crater.shape
+        center_y, center_x = M // 2, N // 2
+        angle_diff = 2 * np.pi / points
+
+        bounds = [
+            self._compute_profile_bounds(i, angle_diff, center_x, center_y)
+            for i in range(math.ceil(points / 2))
+        ]
+
+        
+        pix = lambda x: int(self.profile_distance[x] / self.image_resolution)
+        self.landmarks = []
+        for bound in bounds:
+            x0, y0 = bound[0]
+            xf, yf = bound[1]
+            self.set_profile((x0, y0), (xf, yf))
+            ang = math.atan2(yf-y0, xf-x0)
+            d1 = self.profile_distance[self.t1] / self.image_resolution
+            x1 = x0 + d1 * math.cos(ang)
+            y1 = y0 + d1 * math.sin(ang)
+            d2 = self.profile_distance[self.t2] / self.image_resolution
+            x2 = x0 + d2 * math.cos(ang)
+            y2 = y0 + d2 * math.sin(ang)
+            self.landmarks += [(x1, y1), (x2, y2)]
 
         print(self.landmarks)
 
@@ -187,9 +214,7 @@ class Crater:
             axes[0].set_ylabel("Y [px]", fontweight="bold")
             axes[0].set_title("Top View of the crater", fontweight="bold")
             axes[0].plot(*self.profile_bounds, "ro-")
-            axes[0].scatter(
-                *list(zip(*self.landmarks))
-            )
+            axes[0].scatter(*list(zip(*self.landmarks)))
             axes[0].axis("image")
 
             axes[1].plot(self.profile_distance, self.profile)
