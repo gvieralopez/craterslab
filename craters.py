@@ -135,43 +135,52 @@ class Crater:
         selected_indices = extrema_indices[selected_subindices]
         self.t1, self.b1, self.b2, self.t2 = np.sort(selected_indices)
 
-    def _compute_profile_bounds(self, i, angle_diff, center_x, center_y):
+    def _compute_profile_bounds(self, i, angle_diff, center_x, center_y) -> list:
         angle = i * angle_diff
-        max_radius = min(center_x / np.abs(np.cos(angle)), center_y / np.abs(np.sin(angle)))
+        max_radius = min(
+            center_x / np.abs(np.cos(angle)), center_y / np.abs(np.sin(angle))
+        )
         x0 = int(round(center_x + max_radius * np.cos(angle)))
         y0 = int(round(center_y + max_radius * np.sin(angle)))
         xf = int(round(center_x + max_radius * np.cos(angle + np.pi)))
         yf = int(round(center_y + max_radius * np.sin(angle + np.pi)))
         return [(x0, y0), (xf, yf)]
 
-    def _compute_landmark_points(self, points: int = 10):
-        assert points % 2 == 0
+    def _compute_bounds(self, points: int):
         M, N = self.image_crater.shape
         center_y, center_x = M // 2, N // 2
         angle_diff = 2 * np.pi / points
 
-        bounds = [
+        return [
             self._compute_profile_bounds(i, angle_diff, center_x, center_y)
             for i in range(math.ceil(points / 2))
         ]
 
-        
-        pix = lambda x: int(self.profile_distance[x] / self.image_resolution)
+    def _compute_single_landmark(self, x0, y0, index, ang):
+        d = self.profile_distance[index] / self.image_resolution
+        x1 = x0 + d * math.cos(ang)
+        y1 = y0 + d * math.sin(ang)
+        return x1, y1
+
+    def _compute_complementary_landmarks(self, bound):
+        x0, y0 = bound[0]
+        xf, yf = bound[1]
+        self.set_profile((x0, y0), (xf, yf))
+        ang = math.atan2(yf - y0, xf - x0)
+        l1 = self._compute_single_landmark(x0, y0, self.t1, ang)
+        l2 = self._compute_single_landmark(x0, y0, self.t2, ang)
+        return l1, l2
+
+    def _compute_landmarks(self, bounds: list):
         self.landmarks = []
         for bound in bounds:
-            x0, y0 = bound[0]
-            xf, yf = bound[1]
-            self.set_profile((x0, y0), (xf, yf))
-            ang = math.atan2(yf-y0, xf-x0)
-            d1 = self.profile_distance[self.t1] / self.image_resolution
-            x1 = x0 + d1 * math.cos(ang)
-            y1 = y0 + d1 * math.sin(ang)
-            d2 = self.profile_distance[self.t2] / self.image_resolution
-            x2 = x0 + d2 * math.cos(ang)
-            y2 = y0 + d2 * math.sin(ang)
-            self.landmarks += [(x1, y1), (x2, y2)]
+            l1, l2 = self._compute_complementary_landmarks(bound)
+            self.landmarks += [l1, l2]
 
-        print(self.landmarks)
+    def _compute_landmark_points(self, points: int = 10):
+        assert points % 2 == 0
+        bounds = self._compute_bounds(points)
+        self._compute_landmarks(bounds)
 
     def _compute_slopes(self):
         p1 = np.polyfit(
@@ -182,6 +191,16 @@ class Crater:
             self.profile_distance[self.b2 : self.t2], self.profile[self.b2 : self.t2], 1
         )
         self.slope2 = np.poly1d(p2)
+
+    def set_profile(
+        self,
+        start_point: tuple[int, int],
+        end_point: tuple[int, int],
+        total_points: int = 1000,
+    ):
+        self._compute_profile(start_point, end_point, total_points)
+        self._compute_extremes()
+        self._compute_slopes()
 
     def plot_3D(
         self,
@@ -194,16 +213,6 @@ class Crater:
 
         # Create the plot
         self._plot_3D(X, Y, Z, title, preview_scale)
-
-    def set_profile(
-        self,
-        start_point: tuple[int, int],
-        end_point: tuple[int, int],
-        total_points: int = 1000,
-    ):
-        self._compute_profile(start_point, end_point, total_points)
-        self._compute_extremes()
-        self._compute_slopes()
 
     def plot_profile(self, title: str):
         if self.profile is not None:
