@@ -3,8 +3,9 @@ import cv2
 import scipy.ndimage
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
 from mpl_toolkits.mplot3d import Axes3D
-
+from pycraters.elipse import fit_elipse
 
 class Crater:
     def __init__(
@@ -13,6 +14,7 @@ class Crater:
         image_after: np.ndarray,
         image_resolution: float,
         image_depth: float,
+        ellipse_points: int = 10,
     ):
         self.image_before = image_before
         self.image_after = image_after
@@ -21,7 +23,7 @@ class Crater:
         self.scale = (image_resolution, image_resolution, image_depth)
 
         self.image_crater = self._compute_crater_image()
-        self._compute_landmark_points()
+        self._fit_ellipse(ellipse_points)
         self.profile = None
         self.profile_distance = None
 
@@ -55,6 +57,12 @@ class Crater:
         x0 = max(0, x - padding)
         xm = max(w_max, x + w + padding)
         return diff[y0:ym, x0:xm]
+
+    def _fit_ellipse(self, points=10):
+        self._compute_landmark_points(points)
+        x = np.array([p[0] for p in self.landmarks])
+        y = np.array([p[1] for p in self.landmarks])
+        self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y)
 
     def _create_mesh(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         y = np.arange(0, self.image_crater.shape[0] * self.scale[0], self.scale[0])
@@ -215,46 +223,51 @@ class Crater:
         self._plot_3D(X, Y, Z, title, preview_scale)
 
     def plot_profile(self, title: str):
-        if self.profile is not None:
-            # -- Plot...
-            fig, axes = plt.subplots(ncols=2, figsize=(11, 5))
-            axes[0].imshow(self.image_crater)
-            axes[0].set_xlabel("X [px]", fontweight="bold")
-            axes[0].set_ylabel("Y [px]", fontweight="bold")
-            axes[0].set_title("Top View of the crater", fontweight="bold")
-            axes[0].plot(*self.profile_bounds, "ro-")
-            axes[0].scatter(*list(zip(*self.landmarks)))
-            axes[0].axis("image")
 
-            axes[1].plot(self.profile_distance, self.profile)
-            axes[1].set_title("Profile View of the crater", fontweight="bold")
-            axes[1].plot(
-                [self.profile_distance[self.t1], self.profile_distance[self.b1]],
-                [
-                    self.slope1(self.profile_distance[self.t1]),
-                    self.slope1(self.profile_distance[self.b1]),
-                ],
-                color="blue",
-                linestyle="--",
-            )
-            axes[1].plot(
-                [self.profile_distance[self.t2], self.profile_distance[self.b2]],
-                [
-                    self.slope2(self.profile_distance[self.t2]),
-                    self.slope2(self.profile_distance[self.b2]),
-                ],
-                color="blue",
-                linestyle="--",
-            )
-            axes[1].set_ylabel("Depth [mm]", fontweight="bold")
-            axes[1].set_xlabel("Distance [mm]", fontweight="bold")
-            selected_indices = np.array([self.t1, self.b1, self.b2, self.t2])
-            axes[1].scatter(
-                self.profile_distance[selected_indices], self.profile[selected_indices]
-            )
+        # First subplot with the top view
+        fig, axes = plt.subplots(ncols=2, figsize=(11, 5))
+        axes[0].imshow(self.image_crater)
+        axes[0].set_xlabel("X [px]", fontweight="bold")
+        axes[0].set_ylabel("Y [px]", fontweight="bold")
+        axes[0].set_title("Top View of the crater", fontweight="bold")
+        axes[0].plot(*self.profile_bounds, "ro-")
+        axes[0].scatter(*list(zip(*self.landmarks)))
+        axes[0].axis("image")
+        ellipse_patch = Ellipse(
+            (self.cx, self.cy),
+            2 * self.a,
+            2 * self.b,
+            self.theta * 180 / np.pi,
+            fill=False,
+        )
+        axes[0].add_patch(ellipse_patch)
 
-            plt.show()
-        else:
-            print(
-                "No profile has been set yet. You need to call ´Crater.set_profile´ first"
-            )
+        # Second subplot with the profile view
+        axes[1].plot(self.profile_distance, self.profile)
+        axes[1].set_title("Profile View of the crater", fontweight="bold")
+        axes[1].plot(
+            [self.profile_distance[self.t1], self.profile_distance[self.b1]],
+            [
+                self.slope1(self.profile_distance[self.t1]),
+                self.slope1(self.profile_distance[self.b1]),
+            ],
+            color="blue",
+            linestyle="--",
+        )
+        axes[1].plot(
+            [self.profile_distance[self.t2], self.profile_distance[self.b2]],
+            [
+                self.slope2(self.profile_distance[self.t2]),
+                self.slope2(self.profile_distance[self.b2]),
+            ],
+            color="blue",
+            linestyle="--",
+        )
+        axes[1].set_ylabel("Depth [mm]", fontweight="bold")
+        axes[1].set_xlabel("Distance [mm]", fontweight="bold")
+        selected_indices = np.array([self.t1, self.b1, self.b2, self.t2])
+        axes[1].scatter(
+            self.profile_distance[selected_indices], self.profile[selected_indices]
+        )
+
+        plt.show()
