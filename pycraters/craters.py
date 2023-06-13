@@ -7,6 +7,7 @@ from matplotlib.patches import Ellipse
 from mpl_toolkits.mplot3d import Axes3D
 from pycraters.elipse import fit_elipse
 
+
 class Crater:
     def __init__(
         self,
@@ -24,8 +25,7 @@ class Crater:
 
         self.image_crater = self._compute_crater_image()
         self._fit_ellipse(ellipse_points)
-        self.profile = None
-        self.profile_distance = None
+        self._auto_set_profile()
 
     def _compute_crater_image(
         self, diff_threshold: int = 3, padding: int = 20
@@ -63,6 +63,10 @@ class Crater:
         x = np.array([p[0] for p in self.landmarks])
         y = np.array([p[1] for p in self.landmarks])
         self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y)
+
+    def _auto_set_profile(self):
+        p1, p2 = self._compute_profile_bounds(self.theta + np.pi/2, self.cx, self.cy)
+        self.set_profile(p2, p1, total_points=1000)
 
     def _create_mesh(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         y = np.arange(0, self.image_crater.shape[0] * self.scale[0], self.scale[0])
@@ -143,8 +147,7 @@ class Crater:
         selected_indices = extrema_indices[selected_subindices]
         self.t1, self.b1, self.b2, self.t2 = np.sort(selected_indices)
 
-    def _compute_profile_bounds(self, i, angle_diff, center_x, center_y) -> list:
-        angle = i * angle_diff
+    def _compute_profile_bounds(self, angle, center_x, center_y) -> list:
         max_radius = min(
             center_x / np.abs(np.cos(angle)), center_y / np.abs(np.sin(angle))
         )
@@ -160,7 +163,7 @@ class Crater:
         angle_diff = 2 * np.pi / points
 
         return [
-            self._compute_profile_bounds(i, angle_diff, center_x, center_y)
+            self._compute_profile_bounds(i * angle_diff, center_x, center_y)
             for i in range(math.ceil(points / 2))
         ]
 
