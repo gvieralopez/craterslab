@@ -99,6 +99,13 @@ class Profile:
         return (self.y0 * self.xy_resolution, self.yf * self.xy_resolution)
     
     @property
+    def ang(self):
+        """
+        Provide the angle of the profile
+        """
+        return math.atan2(self.yf - self.y0, self.xf - self.x0)
+    
+    @property
     def h(self):
         """
         Provide the height profile of the crater
@@ -217,14 +224,65 @@ class Profile:
         return x, z
 
 
-
 class EllipticalModel:
     """
     Computes an ellipse that fits the crater rims on a depth map
     """
 
     def __init__(self, img: np.ndarray, points: int = 10):
-        pass
+        self.img = img
+        self._compute_landmark_points(points)
+        x = np.array([p[0] for p in self.landmarks])
+        y = np.array([p[1] for p in self.landmarks])
+        self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y)
+
+    def _compute_landmark_points(self, points):
+        assert points % 2 == 0
+        bounds = self._compute_bounds(points)
+        self.landmarks = self._compute_landmarks(bounds)
+
+    def _compute_bounds(self, points: int):
+        M, N = self.img.shape
+        center_y, center_x = M // 2, N // 2
+        angle_diff = 2 * np.pi / points
+        return [
+            self._compute_profile_bounds(i * angle_diff, center_x, center_y)
+            for i in range(math.ceil(points / 2))
+        ]
+
+    def _compute_profile_bounds(self, angle, center_x, center_y) -> list:
+        max_radius = min(
+            center_x / np.abs(np.cos(angle)), center_y / np.abs(np.sin(angle))
+        )
+        x0 = int(round(center_x + max_radius * np.cos(angle)))
+        y0 = int(round(center_y + max_radius * np.sin(angle)))
+        xf = int(round(center_x + max_radius * np.cos(angle + np.pi)))
+        yf = int(round(center_y + max_radius * np.sin(angle + np.pi)))
+        return [(x0, y0), (xf, yf)]
+
+    def _compute_landmarks(self, bounds: list):
+        landmarks = []
+        for bound in bounds:
+            l1, l2 = self._compute_complementary_landmarks(bound)
+            landmarks += [l1, l2]
+        return landmarks
+
+    def _compute_complementary_landmarks(self, bound):
+        p = Profile(self.img, bound[0], bound[1])
+        l1 = self._compute_single_landmark(p, p.t1)
+        l2 = self._compute_single_landmark(p, p.t2)
+        return l1, l2
+    
+    def _compute_single_landmark(self, profile: Profile, index: int):
+        d = profile._s[index]
+        x1 = profile.x0 + d * math.cos(profile.ang)
+        y1 = profile.y0 + d * math.sin(profile.ang)
+        return x1, y1
+    
+    def ellipse_patch(self):
+        center = (self.cx, self.cy)
+        theta_degree = self.theta * 180 / np.pi
+        return Ellipse(center, 2 * self.a, 2 * self.b, theta_degree, fill=False)
 
 
 class Crater:
@@ -244,8 +302,8 @@ class Crater:
         self.image_resolution = image_resolution
         self.image_depth = image_depth
 
-        self._crater_image(image_before, image_after)        
-        # self._fit_ellipse(ellipse_points) # TODO: Use new class instead
+        self._crater_image(image_before, image_after)   
+        self.ellipse = EllipticalModel(self.img, ellipse_points)  
         self._profile = Profile(self.img,   # TODO: Update with ellipse model
                                 start_point=(0,0), 
                                 end_point=(100,100), 
@@ -346,16 +404,9 @@ class Crater:
         axes[0].set_ylabel("Y [px]", fontweight="bold")
         axes[0].set_title("Top View of the crater", fontweight="bold")
         axes[0].plot(profile.x_pixel_bounds, profile.y_pixel_bounds, "ro-")
-        # axes[0].scatter(*list(zip(*self.landmarks)))
+        axes[0].scatter(*list(zip(*self.ellipse.landmarks)))
         axes[0].axis("image")
-        # ellipse_patch = Ellipse(
-        #     (self.cx, self.cy),
-        #     2 * self.a,
-        #     2 * self.b,
-        #     self.theta * 180 / np.pi,
-        #     fill=False,
-        # )
-        # axes[0].add_patch(ellipse_patch)
+        axes[0].add_patch(self.ellipse.ellipse_patch())
 
         # Second subplot with the profile view
         axes[1].plot(profile.s, profile.h)
@@ -368,100 +419,3 @@ class Crater:
         axes[1].scatter(profile.s[selected_indices], profile.h[selected_indices])
 
         plt.show()
-
-
-
-    def _fit_ellipse(self, points=10):
-        self._compute_landmark_points(points)
-        x = np.array([p[0] for p in self.landmarks])
-        y = np.array([p[1] for p in self.landmarks])
-        self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y)
-
-    def _auto_set_profile(self):
-        p1, p2 = self._compute_profile_bounds(self.theta + np.pi / 2, self.cx, self.cy)
-        self.set_profile(p2, p1, total_points=1000)
-
-
-    # def _compute_profile(
-    #     self,
-    #     start_point: tuple[int, int],
-    #     end_point: tuple[int, int],
-    #     total_points: int,
-    # ):
-    #     # Extract the line
-    #     x0, y0 = start_point  # These are in _pixel_ coordinates!!
-    #     x1, y1 = end_point
-    #     x, y = np.linspace(x0, x1, total_points), np.linspace(y0, y1, total_points)
-
-    #     # Extract the values along the line, using cubic interpolation
-    #     zi = scipy.ndimage.map_coordinates(self.img, np.vstack((x, y))).flatten()
-    #     self.profile = self.image_depth * zi
-
-    #     dx, dy = x1 - x0, y1 - y0
-
-    #     self.profile_distance = np.linspace(
-    #         0, self.image_resolution * np.sqrt(dx**2 + dy**2), len(self.profile)
-    #     )
-
-    #     self.profile_bounds = [[x0, x1], [y0, y1]]
-
-
-
-    def _compute_profile_bounds(self, angle, center_x, center_y) -> list:
-        max_radius = min(
-            center_x / np.abs(np.cos(angle)), center_y / np.abs(np.sin(angle))
-        )
-        x0 = int(round(center_x + max_radius * np.cos(angle)))
-        y0 = int(round(center_y + max_radius * np.sin(angle)))
-        xf = int(round(center_x + max_radius * np.cos(angle + np.pi)))
-        yf = int(round(center_y + max_radius * np.sin(angle + np.pi)))
-        return [(x0, y0), (xf, yf)]
-
-    def _compute_bounds(self, points: int):
-        M, N = self.img.shape
-        center_y, center_x = M // 2, N // 2
-        angle_diff = 2 * np.pi / points
-
-        return [
-            self._compute_profile_bounds(i * angle_diff, center_x, center_y)
-            for i in range(math.ceil(points / 2))
-        ]
-
-    def _compute_single_landmark(self, x0, y0, index, ang):
-        d = self.profile_distance[index] / self.image_resolution
-        x1 = x0 + d * math.cos(ang)
-        y1 = y0 + d * math.sin(ang)
-        return x1, y1
-
-    def _compute_complementary_landmarks(self, bound):
-        x0, y0 = bound[0]
-        xf, yf = bound[1]
-        self.set_profile((x0, y0), (xf, yf))
-        ang = math.atan2(yf - y0, xf - x0)
-        l1 = self._compute_single_landmark(x0, y0, self.t1, ang)
-        l2 = self._compute_single_landmark(x0, y0, self.t2, ang)
-        return l1, l2
-
-    def _compute_landmarks(self, bounds: list):
-        self.landmarks = []
-        for bound in bounds:
-            l1, l2 = self._compute_complementary_landmarks(bound)
-            self.landmarks += [l1, l2]
-
-    def _compute_landmark_points(self, points: int = 10):
-        assert points % 2 == 0
-        bounds = self._compute_bounds(points)
-        self._compute_landmarks(bounds)
-
-
-
-    # def set_profile(
-    #     self,
-    #     start_point: tuple[int, int],
-    #     end_point: tuple[int, int],
-    #     total_points: int = 1000,
-    # ):
-    #     self._compute_profile(start_point, end_point, total_points)
-    #     self._compute_extremes()
-    #     self._compute_slopes()
-
