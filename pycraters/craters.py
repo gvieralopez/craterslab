@@ -283,6 +283,9 @@ class EllipticalModel:
         center = (self.cx, self.cy)
         theta_degree = self.theta * 180 / np.pi
         return Ellipse(center, 2 * self.a, 2 * self.b, theta_degree, fill=False)
+    
+    def max_profile_bounds(self):
+        return self._compute_profile_bounds(self.theta + np.pi/2, self.cx, self.cy)
 
 
 class Crater:
@@ -303,10 +306,11 @@ class Crater:
         self.image_depth = image_depth
 
         self._crater_image(image_before, image_after)   
-        self.ellipse = EllipticalModel(self.img, ellipse_points)  
-        self._profile = Profile(self.img,   # TODO: Update with ellipse model
-                                start_point=(0,0), 
-                                end_point=(100,100), 
+        self.ellipse = EllipticalModel(self.img, ellipse_points) 
+        p1, p2 = self.ellipse.max_profile_bounds()
+        self._profile = Profile(self.img,
+                                start_point=p1, 
+                                end_point=p2, 
                                 xy_resolution=image_resolution, 
                                 z_resolution=image_depth)
 
