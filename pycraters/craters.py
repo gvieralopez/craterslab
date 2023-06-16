@@ -68,12 +68,18 @@ class Profile:
         self.xy_resolution = xy_resolution
         self.z_resolution = z_resolution
         self._compute_profile()
+    
+    def __len__(self):
+        """ 
+        Provide the size of the profile
+        """
+        return len(self._h)
        
 
     @property
     def x_pixel_bounds(self):
         """
-        Provides a tuple indicating the pixel bounds of the profile in the x axis
+        Provide a tuple indicating the pixel bounds of the profile in the x axis
         """
         return (self.x0, self.xf)
     
@@ -87,7 +93,7 @@ class Profile:
     @property
     def x_bounds(self):
         """
-        Provides a tuple indicating the pixel bounds of the profile in the x axis
+        Provide a tuple indicating the pixel bounds of the profile in the x axis
         """
         return (self.x0 * self.xy_resolution, self.xf * self.xy_resolution)
     
@@ -173,22 +179,53 @@ class Profile:
         dx, dy = self.xf - self.x0, self.yf - self.y0
         max_displacement = np.sqrt(dx**2 + dy**2)
         self._s = np.linspace(0, max_displacement, self.total_points)
+
+    def _reset_key_indexes(self):
+        """ 
+        Set the default value for the key indexes
+        """
+        self.t1, self.b1, self.tc, self.b2, self.t2 = None, None, None, None, None
     
-    def _compute_key_indexes(self):
-        # TODO: This methods needs further improvements for edge cases (And some cleaning...)
+    def _compute_sorted_extreme_indexes(self):
+        """ 
+        Compute the indices of the array where the array has an extreme (max or min)
+        and sort them according to the value of the array in that index in ascending 
+        order.
+        """
         dhds = np.gradient(self._h, self._s)
         extrema_indices = np.where(np.diff(np.sign(dhds)))[0]
+        return extrema_indices[np.argsort(self.h[extrema_indices])]
 
-        # Get the indices that would sort y in ascending order
-        sorted_indices = np.argsort(self.h[extrema_indices])
-        smallest_indices = sorted_indices[:2]
-        largest_indices = sorted_indices[-2:]
+    def _compute_key_indexes(self):
+        """
+        Compute the 5 key indexes of the array: t1, b1, tc, b2, t2. 
+        See the class main docstring for reference.
+        """
+        self._reset_key_indexes()
+        sorted_indices = self._compute_sorted_extreme_indexes()
+        self._compute_max_indexes(sorted_indices)
+        self._compute_min_indexes(sorted_indices)
 
-        # Select the corresponding elements from the extrema indices
-        selected_subindices = np.concatenate([smallest_indices, largest_indices])
-        selected_indices = extrema_indices[selected_subindices]
-        self.t1, self.b1, self.b2, self.t2 = np.sort(selected_indices)
-        self.tc = len(self._h) // 2 # TODO: Compute self.tc correctly
+    def _compute_min_indexes(self, sorted_indices):
+        """
+        Compute b1 and b2
+        """
+        self.b1 = next(filter(lambda i: i <= len(self) // 2, sorted_indices), self.b1)
+        self.b2 = next(filter(lambda i: i > len(self) // 2, sorted_indices), self.b2)
+        if self.b1 is None or self.b2 is None:
+            raise ValueError("Could not compute minimum indexes.")       
+
+    def _compute_max_indexes(self, sorted_indices):
+        """
+        Compute t1, tc and t2
+        """
+        indices = sorted_indices[::-1]
+        third = len(self) // 3
+        self.t1 = next(filter(lambda i: i <= third, indices), self.t1)
+        self.tc = next(filter(lambda i: third  < i <= 2 * third, indices), self.tc)
+        self.t2 = next(filter(lambda i: i > 2 * third, indices), self.t2)
+        if self.t1 is None or self.t2 is None or self.tc is None:
+            raise ValueError("Could not compute maximum indexes.")
 
     def _compute_slope(self, i: int, j: int):
         """
