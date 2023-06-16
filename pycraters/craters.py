@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from mpl_toolkits.mplot3d import Axes3D
 from pycraters.elipse import fit_elipse
-
+from collections.abc import Callable
 
 def crop_img(img: np.ndarray, x: int, y: int, w: int, h: int, gap: int) -> np.ndarray:
     """
@@ -41,7 +41,15 @@ def compute_bounding_box(img: np.ndarray, threshold: int) -> tuple[int, int, int
 
 class Profile:
     """
-    Computes the heigh profile through a segment from a depth map
+    Computes the profile of a crater through a segment of a depth map:
+
+        t1                       t2     
+           /\                  /\       
+    ______/  \      tc        /  \______
+              \      /\      /          
+               \    /  \    /           
+                \__/    \__/            
+             b1             b2          
     """
 
     def __init__(
@@ -50,13 +58,87 @@ class Profile:
         start_point: tuple[int, int],
         end_point: tuple[int, int],
         total_points: int = 1000,
+        xy_resolution: float = 1.,
+        z_resolution: float = 1.,
     ):
         self.img = img
         self.x0, self.y0 = start_point
         self.xf, self.yf = end_point
         self.total_points = total_points
-        self._compute_height
-        self._compute_displacement
+        self.xy_resolution = xy_resolution
+        self.z_resolution = z_resolution
+        self._compute_profile()
+       
+
+    @property
+    def x_pixel_bounds(self):
+        """
+        Provides a tuple indicating the pixel bounds of the profile in the x axis
+        """
+        return (self.x0, self.xf)
+    
+    @property
+    def y_pixel_bounds(self):
+        """
+        Provide a tuple indicating the pixel bounds of the profile in the y axis
+        """
+        return (self.y0, self.yf)
+    
+    @property
+    def x_bounds(self):
+        """
+        Provides a tuple indicating the pixel bounds of the profile in the x axis
+        """
+        return (self.x0 * self.xy_resolution, self.xf * self.xy_resolution)
+    
+    @property
+    def y_bounds(self):
+        """
+        Provide a tuple indicating the pixel bounds of the profile in the y axis
+        """
+        return (self.y0 * self.xy_resolution, self.yf * self.xy_resolution)
+    
+    @property
+    def h(self):
+        """
+        Provide the height profile of the crater
+        """
+        return self.z_resolution * self._h
+
+    @property
+    def s(self):
+        """
+        Provide the displacement array on which the height profile was computed
+        """
+        return self.xy_resolution * self._s
+    
+    @property
+    def key_indexes(self):
+        """ 
+        Provide a tuple with all the key indexes for: t1, b1, tc, b2, t2
+        """
+        return self.t1, self.b1, self.tc, self.b2, self.t2
+    
+    @property
+    def walls(self):
+        """ 
+        Provide the points that bound each crater wall in the profile. 
+        Result is returned as: [(x11, x12), (z11, z12)], [(x21, x22), (z21, z22)].
+        So, first the bounds for the left wall and then the bounds for the right
+        wall.
+        """
+        left_wall = self._compute_wall_bounds(1)    
+        right_wall = self._compute_wall_bounds(2) 
+        return left_wall, right_wall
+    
+    def _compute_profile(self):
+        """
+        Computes all the necessary attributes for a profile
+        """
+        self._compute_height()
+        self._compute_displacement()
+        self._compute_key_indexes()
+        self._compute_slopes()
 
     def _allocate_points(self) -> tuple[np.array, np.array]:
         """
@@ -69,21 +151,71 @@ class Profile:
 
     def _compute_height(self):
         """
-        Computes height (h) for each profile point according to the depth-map img
+        Compute height (h) for each profile point according to the depth-map img
 
         """
         x, y = self._allocate_points()
         zi = scipy.ndimage.map_coordinates(self.img, np.vstack((x, y)))
-        self.h = zi.flatten()
+        self._h = zi.flatten()
 
     def _compute_displacement(self):
         """
-        Computes the displacement (s) on each profile point
+        Compute the displacement (s) on each profile point
 
         """
         dx, dy = self.xf - self.x0, self.yf - self.y0
         max_displacement = np.sqrt(dx**2 + dy**2)
-        self.s = np.linspace(0, max_displacement, self.total_points)
+        self._s = np.linspace(0, max_displacement, self.total_points)
+    
+    def _compute_key_indexes(self):
+        # TODO: This methods needs further improvements for edge cases (And some cleaning...)
+        dhds = np.gradient(self._h, self._s)
+        extrema_indices = np.where(np.diff(np.sign(dhds)))[0]
+
+        # Get the indices that would sort y in ascending order
+        sorted_indices = np.argsort(self.h[extrema_indices])
+        smallest_indices = sorted_indices[:2]
+        largest_indices = sorted_indices[-2:]
+
+        # Select the corresponding elements from the extrema indices
+        selected_subindices = np.concatenate([smallest_indices, largest_indices])
+        selected_indices = extrema_indices[selected_subindices]
+        self.t1, self.b1, self.b2, self.t2 = np.sort(selected_indices)
+        self.tc = len(self._h) // 2 # TODO: Compute self.tc correctly
+
+    def _compute_slope(self, i: int, j: int):
+        """
+        Compute the slope of the line that better fits the profile from i to j
+        """
+        p1 = np.polyfit(self.s[i : j], self.h[i : j], 1)
+        return np.poly1d(p1)
+
+    def _compute_slopes(self):
+        """
+        Compute the slope of crater walls
+        """
+        self.slope1 = self._compute_slope(self.t1, self.b1)
+        self.slope2 = self._compute_slope(self.b2, self.t2)
+    
+    def _compute_wall_bounds(self, wall: int = 1):
+        """ 
+        Compute the bounds of a given wall given the id (1 or 2) to refer to 
+        the left or right wall respectively.
+        """
+        assert wall in (1, 2)
+        if wall == 1:
+            return self._single_wall_bound(self.t1, self.b1, self.slope1)
+        return self._single_wall_bound(self.t2, self.b2, self.slope2)
+    
+    def _single_wall_bound(self, i: int, j: int, model: Callable):
+        """ 
+        Return the wall bounds given the indexes of the bounds (i, j) and the 
+        linear function that interpolates them.
+        """
+        x = [self.s[i], self.s[j]]
+        z = [model(v) for v in x]
+        return x, z
+
 
 
 class EllipticalModel:
@@ -112,10 +244,13 @@ class Crater:
         self.image_resolution = image_resolution
         self.image_depth = image_depth
 
-        self._crater_image(image_before, image_after)
-        # TODO: Use new classes instead
-        self._fit_ellipse(ellipse_points)
-        self._auto_set_profile()
+        self._crater_image(image_before, image_after)        
+        # self._fit_ellipse(ellipse_points) # TODO: Use new class instead
+        self._profile = Profile(self.img,   # TODO: Update with ellipse model
+                                start_point=(0,0), 
+                                end_point=(100,100), 
+                                xy_resolution=image_resolution, 
+                                z_resolution=image_depth)
 
     @property
     def scale(self):
@@ -135,6 +270,30 @@ class Crater:
         X, Y = np.meshgrid(x, y)
         Z = self.img * self.scale[2]
         return X, Y, Z
+
+    def plot_3D(
+        self,
+        title: str = 'Crater view in 3D',
+        preview_scale: tuple[float, float, float] = (1.0, 1.0, 1.0),
+    ):
+        """ 
+        Create a 3D plot of the crater considering the sensor resolution. 
+        Preview scale can be passed to enlarge or shrink specific dimensions.
+        """
+
+        # Create the plot with de-normalized data
+        self._plot_3D(*self.data, title, preview_scale)
+
+
+    def plot_profile(self, title: str, profile: Profile | None = None):
+        """ 
+        Create a profile plot of the crater considering the sensor resolution. 
+        If no specific profile is passed, the plot will be shown on the largest
+        profile computed used the elliptical approximation.
+        """
+        if profile is None:
+            profile = self._profile
+        self._plot_profile(title, profile)
 
 
     def _crater_image(
@@ -178,14 +337,37 @@ class Crater:
         plt.colorbar(surface, shrink=0.5, aspect=10, orientation="horizontal", pad=0.2)
         plt.show()
 
-    def plot_3D(
-        self,
-        title: str,
-        preview_scale: tuple[float, float, float],
-    ):
+    def _plot_profile(self, title: str, profile: Profile):
 
-        # Create the plot with de-normalized data
-        self._plot_3D(*self.data, title, preview_scale)
+        # First subplot with the top view
+        fig, axes = plt.subplots(ncols=2, figsize=(11, 5))
+        axes[0].imshow(self.img)
+        axes[0].set_xlabel("X [px]", fontweight="bold")
+        axes[0].set_ylabel("Y [px]", fontweight="bold")
+        axes[0].set_title("Top View of the crater", fontweight="bold")
+        axes[0].plot(profile.x_pixel_bounds, profile.y_pixel_bounds, "ro-")
+        # axes[0].scatter(*list(zip(*self.landmarks)))
+        axes[0].axis("image")
+        # ellipse_patch = Ellipse(
+        #     (self.cx, self.cy),
+        #     2 * self.a,
+        #     2 * self.b,
+        #     self.theta * 180 / np.pi,
+        #     fill=False,
+        # )
+        # axes[0].add_patch(ellipse_patch)
+
+        # Second subplot with the profile view
+        axes[1].plot(profile.s, profile.h)
+        axes[1].set_title("Profile View of the crater", fontweight="bold")
+        for x_bounds, z_bounds in profile.walls:
+            axes[1].plot(x_bounds, z_bounds, color="blue", linestyle="--")  
+        axes[1].set_ylabel("Depth [mm]", fontweight="bold")
+        axes[1].set_xlabel("Distance [mm]", fontweight="bold")
+        selected_indices = np.array(profile.key_indexes)
+        axes[1].scatter(profile.s[selected_indices], profile.h[selected_indices])
+
+        plt.show()
 
 
 
@@ -200,42 +382,30 @@ class Crater:
         self.set_profile(p2, p1, total_points=1000)
 
 
-    def _compute_profile(
-        self,
-        start_point: tuple[int, int],
-        end_point: tuple[int, int],
-        total_points: int,
-    ):
-        # Extract the line
-        x0, y0 = start_point  # These are in _pixel_ coordinates!!
-        x1, y1 = end_point
-        x, y = np.linspace(x0, x1, total_points), np.linspace(y0, y1, total_points)
+    # def _compute_profile(
+    #     self,
+    #     start_point: tuple[int, int],
+    #     end_point: tuple[int, int],
+    #     total_points: int,
+    # ):
+    #     # Extract the line
+    #     x0, y0 = start_point  # These are in _pixel_ coordinates!!
+    #     x1, y1 = end_point
+    #     x, y = np.linspace(x0, x1, total_points), np.linspace(y0, y1, total_points)
 
-        # Extract the values along the line, using cubic interpolation
-        zi = scipy.ndimage.map_coordinates(self.img, np.vstack((x, y))).flatten()
-        self.profile = self.image_depth * zi
+    #     # Extract the values along the line, using cubic interpolation
+    #     zi = scipy.ndimage.map_coordinates(self.img, np.vstack((x, y))).flatten()
+    #     self.profile = self.image_depth * zi
 
-        dx, dy = x1 - x0, y1 - y0
+    #     dx, dy = x1 - x0, y1 - y0
 
-        self.profile_distance = np.linspace(
-            0, self.image_resolution * np.sqrt(dx**2 + dy**2), len(self.profile)
-        )
+    #     self.profile_distance = np.linspace(
+    #         0, self.image_resolution * np.sqrt(dx**2 + dy**2), len(self.profile)
+    #     )
 
-        self.profile_bounds = [[x0, x1], [y0, y1]]
+    #     self.profile_bounds = [[x0, x1], [y0, y1]]
 
-    def _compute_extremes(self):
-        dydx = np.gradient(self.profile, self.profile_distance)
-        extrema_indices = np.where(np.diff(np.sign(dydx)))[0]
 
-        # Get the indices that would sort y in ascending order
-        sorted_indices = np.argsort(self.profile[extrema_indices])
-        smallest_indices = sorted_indices[:2]
-        largest_indices = sorted_indices[-2:]
-
-        # Select the corresponding elements from the extrema indices
-        selected_subindices = np.concatenate([smallest_indices, largest_indices])
-        selected_indices = extrema_indices[selected_subindices]
-        self.t1, self.b1, self.b2, self.t2 = np.sort(selected_indices)
 
     def _compute_profile_bounds(self, angle, center_x, center_y) -> list:
         max_radius = min(
@@ -283,74 +453,15 @@ class Crater:
         bounds = self._compute_bounds(points)
         self._compute_landmarks(bounds)
 
-    def _compute_slopes(self):
-        p1 = np.polyfit(
-            self.profile_distance[self.t1 : self.b1], self.profile[self.t1 : self.b1], 1
-        )
-        self.slope1 = np.poly1d(p1)
-        p2 = np.polyfit(
-            self.profile_distance[self.b2 : self.t2], self.profile[self.b2 : self.t2], 1
-        )
-        self.slope2 = np.poly1d(p2)
-
-    def set_profile(
-        self,
-        start_point: tuple[int, int],
-        end_point: tuple[int, int],
-        total_points: int = 1000,
-    ):
-        self._compute_profile(start_point, end_point, total_points)
-        self._compute_extremes()
-        self._compute_slopes()
 
 
+    # def set_profile(
+    #     self,
+    #     start_point: tuple[int, int],
+    #     end_point: tuple[int, int],
+    #     total_points: int = 1000,
+    # ):
+    #     self._compute_profile(start_point, end_point, total_points)
+    #     self._compute_extremes()
+    #     self._compute_slopes()
 
-    def plot_profile(self, title: str):
-
-        # First subplot with the top view
-        fig, axes = plt.subplots(ncols=2, figsize=(11, 5))
-        axes[0].imshow(self.img)
-        axes[0].set_xlabel("X [px]", fontweight="bold")
-        axes[0].set_ylabel("Y [px]", fontweight="bold")
-        axes[0].set_title("Top View of the crater", fontweight="bold")
-        axes[0].plot(*self.profile_bounds, "ro-")
-        axes[0].scatter(*list(zip(*self.landmarks)))
-        axes[0].axis("image")
-        ellipse_patch = Ellipse(
-            (self.cx, self.cy),
-            2 * self.a,
-            2 * self.b,
-            self.theta * 180 / np.pi,
-            fill=False,
-        )
-        axes[0].add_patch(ellipse_patch)
-
-        # Second subplot with the profile view
-        axes[1].plot(self.profile_distance, self.profile)
-        axes[1].set_title("Profile View of the crater", fontweight="bold")
-        axes[1].plot(
-            [self.profile_distance[self.t1], self.profile_distance[self.b1]],
-            [
-                self.slope1(self.profile_distance[self.t1]),
-                self.slope1(self.profile_distance[self.b1]),
-            ],
-            color="blue",
-            linestyle="--",
-        )
-        axes[1].plot(
-            [self.profile_distance[self.t2], self.profile_distance[self.b2]],
-            [
-                self.slope2(self.profile_distance[self.t2]),
-                self.slope2(self.profile_distance[self.b2]),
-            ],
-            color="blue",
-            linestyle="--",
-        )
-        axes[1].set_ylabel("Depth [mm]", fontweight="bold")
-        axes[1].set_xlabel("Distance [mm]", fontweight="bold")
-        selected_indices = np.array([self.t1, self.b1, self.b2, self.t2])
-        axes[1].scatter(
-            self.profile_distance[selected_indices], self.profile[selected_indices]
-        )
-
-        plt.show()
