@@ -17,3 +17,6 @@ c.plot_3D(title='Crater view in 3D', preview_scale=(1, 1, 10))
 
 # Plot a transversal cut of the crater
 c.plot_profile('Crater profile')
+
+# Inspect observables
+print(c)

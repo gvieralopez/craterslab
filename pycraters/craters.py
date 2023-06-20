@@ -350,6 +350,15 @@ class Crater:
                                 end_point=p2, 
                                 xy_resolution=image_resolution, 
                                 z_resolution=image_depth)
+        self._compute_observables()
+    
+    def __repr__(self):
+        return f"""
+        Crater observables computed:
+        ----------------------------
+
+        - Max depth: {self.da:.2f} mm 
+        """
 
     @property
     def scale(self):
@@ -393,6 +402,10 @@ class Crater:
         if profile is None:
             profile = self._profile
         self._plot_profile(title, profile)
+    
+    def _compute_observables(self):
+        self.da = np.min(self.img) * self.image_depth
+        ...
 
 
     def _crater_image(
