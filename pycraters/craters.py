@@ -33,10 +33,11 @@ def compute_bounding_box(img: np.ndarray, threshold: int) -> tuple[int, int, int
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Find the contour with the largest area
-    largest_contour = max(contours, key=cv2.contourArea)
+    if len(contours):
+        largest_contour = max(contours, key=cv2.contourArea)
 
-    # Find the bounding rectangle of the largest contour
-    return cv2.boundingRect(largest_contour)
+        # Find the bounding rectangle of the largest contour
+        return cv2.boundingRect(largest_contour)
 
 
 class Profile:
@@ -417,8 +418,11 @@ class Crater:
     ) -> np.ndarray:
 
         diff = image_before - image_after
-        x, y, w, h = compute_bounding_box(diff, threshold=diff_threshold)
-        self.img = crop_img(diff, x, y, w, h, padding)
+        bb = compute_bounding_box(diff, threshold=diff_threshold)
+        if bb is None:
+            self.img = diff
+        else:
+            self.img = crop_img(diff, *bb, padding)
 
     def _plot_3D(
         self,
