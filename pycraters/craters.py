@@ -359,6 +359,7 @@ class Crater:
         ----------------------------
 
         - Max depth: {self.da:.2f} mm 
+        - Diameter: {self.D:.2f} mm 
         """
 
     @property
@@ -406,8 +407,7 @@ class Crater:
     
     def _compute_observables(self):
         self.da = np.min(self.img) * self.image_depth
-        ...
-
+        self.D = 2 * abs(self.ellipse.a) * self.image_resolution
 
     def _crater_image(
         self,
