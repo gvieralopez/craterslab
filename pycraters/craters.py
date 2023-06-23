@@ -429,8 +429,9 @@ class Crater:
         preview_scale: tuple[float, float, float],
     ):
 
-        # Set up the plot
-        ax = plt.figure().gca(projection="3d")
+         # Set up the plot
+        fig = plt.figure()
+        ax = fig.add_subplot(projection="3d")
         surface = ax.plot_surface(X, Y, Z, cmap="viridis")
 
         # Preserve aspect ratio
