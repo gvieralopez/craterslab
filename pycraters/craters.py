@@ -380,8 +380,8 @@ class Crater:
         Provides de-normalized crater data (i.e, data is presented on actual
         scale computed using the characteristics of the sensor)
         """
-        y = np.arange(0, self.img.shape[0] * self.scale[0], self.scale[0])
-        x = np.arange(0, self.img.shape[1] * self.scale[1], self.scale[1])
+        y = np.linspace(0, self.img.shape[0] * self.scale[0], self.img.shape[0])
+        x = np.linspace(0, self.img.shape[1] * self.scale[1], self.img.shape[1])
         X, Y = np.meshgrid(x, y)
         Z = self.img * self.scale[2]
         return X, Y, Z
