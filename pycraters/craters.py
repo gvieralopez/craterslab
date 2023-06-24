@@ -272,7 +272,7 @@ class EllipticalModel:
     Computes an ellipse that fits the crater rims on a depth map
     """
 
-    def __init__(self, img: np.ndarray, points: int = 10):
+    def __init__(self, img: np.ndarray, points: int):
         self.img = img
         self._compute_landmark_points(points)
         x = np.array([p[0] for p in self.landmarks])
