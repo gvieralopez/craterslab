@@ -293,10 +293,18 @@ class EllipticalModel:
             for i in range(math.ceil(points / 2))
         ]
 
+    def _compute_max_radius(self, angle, center_x, center_y) -> float:
+        cos_angle = np.abs(np.cos(angle))
+        sin_angle = np.abs(np.sin(angle))
+        if cos_angle == 0:
+            return center_y / sin_angle
+        elif sin_angle == 0:
+            return center_x / cos_angle
+        return min(center_y / sin_angle, center_x / cos_angle)
+
+
     def _compute_profile_bounds(self, angle, center_x, center_y) -> list:
-        max_radius = min(
-            center_x / np.abs(np.cos(angle)), center_y / np.abs(np.sin(angle))
-        )
+        max_radius = self._compute_max_radius(angle, center_x, center_y)
         x0 = int(round(center_x + max_radius * np.cos(angle)))
         y0 = int(round(center_y + max_radius * np.sin(angle)))
         xf = int(round(center_x + max_radius * np.cos(angle + np.pi)))
