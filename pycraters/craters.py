@@ -26,8 +26,10 @@ def compute_bounding_box(img: np.ndarray, threshold: int) -> tuple[int, int, int
     |p| > threshold
     """
     # Threshold the image
-    _, thresh = cv2.threshold(img, -threshold, threshold, cv2.THRESH_BINARY_INV)
-    thresh = thresh.astype(np.uint8)
+    _, thresh1 = cv2.threshold(img, -threshold, 255, cv2.THRESH_BINARY_INV)
+    _, thresh2 = cv2.threshold(img, threshold, 255, cv2.THRESH_BINARY)
+    thresh1, thresh2 = thresh1.astype(np.uint8), thresh2.astype(np.uint8)
+    thresh = cv2.bitwise_or(thresh1, thresh2)
 
     # Find the contours of the binary image
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
