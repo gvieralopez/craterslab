@@ -421,10 +421,7 @@ class Crater:
 
         diff = image_before - image_after
         bb = compute_bounding_box(diff, threshold=diff_threshold)
-        if bb is None:
-            self.img = diff
-        else:
-            self.img = crop_img(diff, *bb, padding)
+        self.img = crop_img(diff, *bb, padding) if bb is None else diff
 
     def _plot_3D(
         self,
