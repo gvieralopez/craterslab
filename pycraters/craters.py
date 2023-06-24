@@ -336,7 +336,7 @@ class EllipticalModel:
         return Ellipse(center, 2 * self.a, 2 * self.b, theta_degree, fill=False)
     
     def max_profile_bounds(self):
-        return self._compute_profile_bounds(self.theta + np.pi/2, self.cx, self.cy)
+        return self._compute_profile_bounds(self.theta, self.cx, self.cy)
 
 
 class Crater:
@@ -486,9 +486,13 @@ class Crater:
         axes[0].set_ylabel("Y [px]", fontweight="bold")
         axes[0].set_title("Top View of the crater", fontweight="bold")
         axes[0].plot(profile.x_pixel_bounds, profile.y_pixel_bounds, "ro-")
-        axes[0].scatter(*list(zip(*self.ellipse.landmarks)))
         axes[0].axis("image")
-        axes[0].add_patch(self.ellipse.ellipse_patch())
+        ylim, xlim = self.img.shape
+        axes[0].set_xlim(0, xlim)
+        axes[0].set_ylim(0, ylim)
+        if self.is_valid:
+            axes[0].add_patch(self.ellipse.ellipse_patch())
+            axes[0].scatter(*list(zip(*self.ellipse.landmarks)))
 
         # Second subplot with the profile view
         axes[1].plot(profile.s, profile.h)
