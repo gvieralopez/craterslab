@@ -367,13 +367,17 @@ class Crater:
         self._compute_observables()
     
     def __repr__(self):
-        return f"""
-        Crater observables computed:
-        ----------------------------
+        if self.is_valid:
+            return self._observables_summary()
+        return "Data does not seems to represent a valid crater"
 
-        - Max depth: {self.da:.2f} mm 
-        - Diameter: {self.D:.2f} mm 
+    @property
+    def is_valid(self) -> bool:
         """
+        Return a boolean to indicate whether the data is likely to be from a 
+        valid crater 
+        """
+        return self.ellipse is not None
 
     @property
     def scale(self):
@@ -421,6 +425,15 @@ class Crater:
     def _compute_observables(self):
         self.da = np.min(self.img) * self.image_depth
         self.D = 2 * abs(self.ellipse.a) * self.image_resolution
+    
+    def _observables_summary(self):
+        return f"""
+        Crater observables computed:
+        ----------------------------
+
+        - Max depth: {self.da:.2f} mm 
+        - Diameter: {self.D:.2f} mm 
+        """
 
     def _crater_image(
         self,
