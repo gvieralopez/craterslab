@@ -16,7 +16,7 @@ def crop_img(img: np.ndarray, x: int, y: int, w: int, h: int, gap: int) -> np.nd
     y0 = max(0, y - gap)
     ym = min(y_max, y + h + gap)
     x0 = max(0, x - gap)
-    xm = max(x_max, x + w + gap)
+    xm = min(x_max, x + w + gap)
     return img[y0:ym, x0:xm]
 
 
