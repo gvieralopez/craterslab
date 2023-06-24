@@ -215,7 +215,7 @@ class Profile:
         """
         self.b1 = next(filter(lambda i: i <= len(self) // 2, sorted_indices), self.b1)
         self.b2 = next(filter(lambda i: i > len(self) // 2, sorted_indices), self.b2)
-        if self.b1 is None or self.b2 is None:
+        if None in (self.b1, self.b2):
             raise ValueError("Could not compute minimum indexes.")       
 
     def _compute_max_indexes(self, sorted_indices):
@@ -227,13 +227,16 @@ class Profile:
         self.t1 = next(filter(lambda i: i <= third, indices), self.t1)
         self.tc = next(filter(lambda i: third  < i <= 2 * third, indices), self.tc)
         self.t2 = next(filter(lambda i: i > 2 * third, indices), self.t2)
-        if self.t1 is None or self.t2 is None or self.tc is None:
+        if None in (self.t1, self.t2, self.tc):
             raise ValueError("Could not compute maximum indexes.")
 
     def _compute_slope(self, i: int, j: int):
         """
         Compute the slope of the line that better fits the profile from i to j
         """
+        if None in (i, j):
+            raise ValueError("Invalid indices for slope calculation.")
+        i, j = (i, j) if i < j else (j, i)
         p1 = np.polyfit(self.s[i : j], self.h[i : j], 1)
         return np.poly1d(p1)
 
