@@ -1,4 +1,6 @@
 import math
+import logging
+
 import cv2
 import scipy.ndimage
 import numpy as np
@@ -353,25 +355,46 @@ class Crater:
         image_after: np.ndarray,
         image_resolution: float,
         image_depth: float,
-        ellipse_points: int = 10,
+        ellipse_points: int = 20,
     ):
         self.image_resolution = image_resolution
         self.image_depth = image_depth
 
         self._crater_image(image_before, image_after)   
         self.ellipse = EllipticalModel(self.img, ellipse_points) 
-        p1, p2 = self.ellipse.max_profile_bounds()
-        self._profile = Profile(self.img,
+        self._set_default_profile()
+
+        if self.is_valid:
+            self._compute_observables()
+
+    def _set_profile(self, p1, p2) -> bool:
+
+        try:
+            self._profile = Profile(self.img,
                                 start_point=p1, 
                                 end_point=p2, 
-                                xy_resolution=image_resolution, 
-                                z_resolution=image_depth)
-        self._compute_observables()
-    
+                                xy_resolution=self.image_resolution, 
+                                z_resolution=self.image_depth)
+            return True
+                         
+        except ValueError:
+            return False
+
+    def _set_default_profile(self):
+        if self.is_valid:
+            p1, p2 = self.ellipse.max_profile_bounds()
+            if self._set_profile(p1, p2):
+                return  
+        p1, p2 = (0,0), self.img.shape
+        self._set_profile(p1, p2)
+        logging.warning("Failed to set default profile using the elliptical model."
+                        "Using default profile as y=x")
+
     def __repr__(self):
         if self.is_valid:
             return self._observables_summary()
-        return "Data does not seems to represent a valid crater"
+        logging.error("Data does not seems to represent a valid crater")
+        return ""
 
     @property
     def is_valid(self) -> bool:
