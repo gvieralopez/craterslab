@@ -277,7 +277,9 @@ class EllipticalModel:
         self._compute_landmark_points(points)
         x = np.array([p[0] for p in self.landmarks])
         y = np.array([p[1] for p in self.landmarks])
-        self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y)
+        ymax, xmax = self.img.shape
+        xrange, yrange = (0, xmax), (0, ymax)
+        self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y, xrange, yrange)
 
     def _compute_landmark_points(self, points):
         assert points % 2 == 0
