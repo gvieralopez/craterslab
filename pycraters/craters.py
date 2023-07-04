@@ -276,18 +276,37 @@ class EllipticalModel:
 
     def __init__(self, img: np.ndarray, points: int):
         self.img = img
+        self.points = points
+        self.MIN_REQ_POINTS = 4
         self._compute_landmark_points(points)
-        x = np.array([p[0] for p in self.landmarks])
-        y = np.array([p[1] for p in self.landmarks])
-        ymax, xmax = self.img.shape
-        xrange, yrange = (0, xmax), (0, ymax)
-        self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y, xrange, yrange)
+        if self._validate_landmark_points():
+            x = np.array([p[0] for p in self.landmarks])
+            y = np.array([p[1] for p in self.landmarks])
+            ymax, xmax = self.img.shape
+            xrange, yrange = (0, xmax), (0, ymax)
+            self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y, xrange, yrange)
+            self.is_ok = True
+        else:
+            self.is_ok = False
 
     def _compute_landmark_points(self, points):
         assert points % 2 == 0
         bounds = self._compute_bounds(points)
         self.landmarks = self._compute_landmarks(bounds)
 
+    def _validate_landmark_points(self):
+        if len(self.landmarks) < self.points:
+            logging.warning(f"Only {len(self.landmarks)} landmark were computed " 
+                            f"(instead of {self.points})")
+            if len(self.landmarks) < self.MIN_REQ_POINTS:                
+                logging.error(f"{len(self.landmarks)} landmarks are not sufficient for "
+                              "fitting the elliptical model")
+                return False
+            else:            
+                logging.warning(f"Trying to fit the elliptical model with {len(self.landmarks)} "
+                              "landmarks")
+        return True
+        
     def _compute_bounds(self, points: int):
         M, N = self.img.shape
         center_y, center_x = M // 2, N // 2
@@ -318,15 +337,21 @@ class EllipticalModel:
     def _compute_landmarks(self, bounds: list):
         landmarks = []
         for bound in bounds:
-            l1, l2 = self._compute_complementary_landmarks(bound)
-            landmarks += [l1, l2]
+            try:
+                l1, l2 = self._compute_complementary_landmarks(bound)
+                landmarks += [l1, l2]
+            except:
+                logging.error('Cannot compute a landmark pair')
         return landmarks
 
     def _compute_complementary_landmarks(self, bound):
-        p = Profile(self.img, bound[0], bound[1])
-        l1 = self._compute_single_landmark(p, p.t1)
-        l2 = self._compute_single_landmark(p, p.t2)
-        return l1, l2
+        try:
+            p = Profile(self.img, bound[0], bound[1])
+            l1 = self._compute_single_landmark(p, p.t1)
+            l2 = self._compute_single_landmark(p, p.t2)
+            return l1, l2
+        except ValueError:
+            raise ValueError("Could not create a profile for those bounds")
     
     def _compute_single_landmark(self, profile: Profile, index: int):
         d = profile._s[index]
@@ -360,8 +385,9 @@ class Crater:
         self.image_resolution = image_resolution
         self.image_depth = image_depth
 
-        self._crater_image(image_before, image_after)   
-        self.ellipse = EllipticalModel(self.img, ellipse_points) 
+        self._crater_image(image_before, image_after)  
+        ellipse = EllipticalModel(self.img, ellipse_points) 
+        self.ellipse = ellipse if ellipse.is_ok else None
         self._set_default_profile()
 
         if self.is_valid:
@@ -381,7 +407,7 @@ class Crater:
             return False
 
     def _set_default_profile(self):
-        if self.is_valid:
+        if self.ellipse is not None:
             p1, p2 = self.ellipse.max_profile_bounds()
             if self._set_profile(p1, p2):
                 return  
