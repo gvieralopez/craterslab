@@ -16,7 +16,7 @@ c = Crater(before_impact_data, after_impact_data, image_resolution, image_depth)
 c.plot_3D(title='Crater view in 3D', preview_scale=(1, 1, 4))
 
 # Plot a transversal cut of the crater
-#c.plot_profile('Crater profile')
+c.plot_profile('Crater profile')
 
 # Inspect observables
 print(c)
