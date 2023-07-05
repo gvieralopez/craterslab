@@ -518,7 +518,7 @@ class Crater:
         self._plot_3D(*self.data, title, preview_scale)
 
 
-    def plot_profile(self, title: str, profile: Profile | None = None):
+    def plot_profile(self, title: str, profile: Profile | None = None, only_profile: bool = False):
         """ 
         Create a profile plot of the crater considering the sensor resolution. 
         If no specific profile is passed, the plot will be shown on the largest
@@ -526,7 +526,10 @@ class Crater:
         """
         if profile is None:
             profile = self._profile
-        self._plot_profile(title, profile)
+        if only_profile:
+            self._plot_profile_only(title, profile)
+        else:
+            self._plot_profile(title, profile)
     
     def _compute_observables(self):
         self.da = np.min(self.img) * self.image_depth
@@ -576,17 +579,36 @@ class Crater:
         ax.set_box_aspect(aspect)
 
 
-        if self.is_valid:
-            p = self.ellipse.ellipse_patch(scale=self.image_resolution, color="red")
-            ax.add_patch(p)
-            art3d.pathpatch_2d_to_3d(p, z=max(self._profile.h), zdir='z') 
+        # if self.is_valid:
+        #     p = self.ellipse.ellipse_patch(scale=self.image_resolution, color="red")
+        #     ax.add_patch(p)
+        #     art3d.pathpatch_2d_to_3d(p, z=max(self._profile.h), zdir='z') 
 
         # Write labels, title and color bar
-        ax.set_xlabel("X[mm]", fontweight="bold")
-        ax.set_ylabel("Y[mm]", fontweight="bold")
-        ax.set_zlabel("Z[mm]", fontweight="bold")
+        ax.set_xlabel("X[mm]", fontweight="bold", fontsize=13, labelpad=10)
+        ax.set_ylabel("Y[mm]", fontweight="bold", fontsize=13, labelpad=10)
+        ax.set_zlabel("Z[mm]", fontweight="bold", fontsize=13, labelpad=10)
+        ax.tick_params(axis='x', labelsize=13)
+        ax.tick_params(axis='y', labelsize=13)
+        ax.tick_params(axis='z', labelsize=13)
         plt.title(title)
         plt.colorbar(surface, shrink=0.5, aspect=10, orientation="vertical", pad=0.2)
+        plt.show()
+
+
+    def _plot_profile_only(self, title: str, profile: Profile):
+
+        fig, ax = plt.subplots()  #create figure and axes
+        ax.plot(profile.s, profile.h)
+        for x_bounds, z_bounds in profile.walls:
+            ax.plot(x_bounds, z_bounds, color="blue", linestyle="--")  
+        ax.set_ylabel("Depth [mm]", fontweight="bold", labelpad=13, fontsize=30)
+        ax.set_xlabel("Distance [mm]", fontweight="bold", labelpad=13, fontsize=30)
+        ax.tick_params(axis='x', labelsize=30)
+        ax.tick_params(axis='y', labelsize=30)
+        selected_indices = np.array(profile.key_indexes)
+        ax.scatter(profile.s[selected_indices], profile.h[selected_indices])
+        ax.grid()
         plt.show()
 
     def _plot_profile(self, title: str, profile: Profile):
@@ -615,5 +637,6 @@ class Crater:
         axes[1].set_xlabel("Distance [mm]", fontweight="bold")
         selected_indices = np.array(profile.key_indexes)
         axes[1].scatter(profile.s[selected_indices], profile.h[selected_indices])
+        axes[1].grid()
 
         plt.show()
