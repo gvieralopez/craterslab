@@ -18,10 +18,10 @@ for i in ["aFig4", "bFig4", "cFig4", "bFig5"]:
     c = Crater(before_impact_data, after_impact_data, image_resolution, image_depth)
 
     # Plot the crater in 3D
-    c.plot_3D(title='Crater view in 3D', preview_scale=(1, 1, 4))
+    c.plot_3D(title='', preview_scale=(1, 1, 5))
 
     # Plot a transversal cut of the crater
-    c.plot_profile('Crater profile')
+    c.plot_profile('Crater profile', only_profile=True)
 
     # Inspect observables
     print(c)
