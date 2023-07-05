@@ -240,8 +240,13 @@ class Profile:
         if None in (i, j):
             raise ValueError("Invalid indices for slope calculation.")
         i, j = (i, j) if i < j else (j, i)
-        p1 = np.polyfit(self.s[i : j], self.h[i : j], 1)
-        return np.poly1d(p1)
+        x_vals, y_vals = self.s[i : j], self.h[i : j]
+        if x_vals.size > 1:
+            try:
+                p1 = np.polyfit(x_vals, y_vals , 1)
+                return np.poly1d(p1)
+            except SystemError:
+                logging.error('Error computing slopes')
 
     def _compute_slopes(self):
         """
@@ -266,7 +271,11 @@ class Profile:
         linear function that interpolates them.
         """
         x = [self.s[i], self.s[j]]
-        z = [model(v) for v in x]
+        if model:
+            z = [model(v) for v in x]
+        else:
+            z = x
+            logging.error('Slopes are invalid')
         return x, z
 
 
