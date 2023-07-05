@@ -6,6 +6,7 @@ import scipy.ndimage
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
+import mpl_toolkits.mplot3d.art3d as art3d
 from mpl_toolkits.mplot3d import Axes3D
 from pycraters.elipse import fit_elipse
 from collections.abc import Callable
@@ -359,10 +360,16 @@ class EllipticalModel:
         y1 = profile.y0 + d * math.sin(profile.ang)
         return x1, y1
     
-    def ellipse_patch(self):
-        center = (self.cx, self.cy)
+    def _scale_ellipse(self, cx, cy, da, db, scale):
+        return cx * scale, cy * scale, da * scale, db * scale
+    
+    def ellipse_patch(self, scale: float = 1., color=None):
+        cx, cy = self.cx, self.cy
+        da, db = 2 * self.a, 2 * self.b
         theta_degree = self.theta * 180 / np.pi
-        return Ellipse(center, 2 * self.a, 2 * self.b, theta_degree, fill=False)
+        if scale != 1.:
+            cx, cy, da, db = self._scale_ellipse(cx, cy, da, db, scale)
+        return Ellipse((cx, cy), da, db, theta_degree, fill=False, color=color)
     
     def max_profile_bounds(self):
         return self._compute_profile_bounds(self.theta, self.cx, self.cy)
@@ -520,12 +527,18 @@ class Crater:
         ]
         ax.set_box_aspect(aspect)
 
+
+        if self.is_valid:
+            p = self.ellipse.ellipse_patch(scale=self.image_resolution, color="red")
+            ax.add_patch(p)
+            art3d.pathpatch_2d_to_3d(p, z=max(self._profile.h), zdir='z') 
+
         # Write labels, title and color bar
         ax.set_xlabel("X[mm]", fontweight="bold")
         ax.set_ylabel("Y[mm]", fontweight="bold")
         ax.set_zlabel("Z[mm]", fontweight="bold")
         plt.title(title)
-        plt.colorbar(surface, shrink=0.5, aspect=10, orientation="horizontal", pad=0.2)
+        plt.colorbar(surface, shrink=0.5, aspect=10, orientation="vertical", pad=0.2)
         plt.show()
 
     def _plot_profile(self, title: str, profile: Profile):
