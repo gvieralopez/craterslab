@@ -592,7 +592,7 @@ class Crater:
         ax.tick_params(axis='y', labelsize=13)
         ax.tick_params(axis='z', labelsize=13)
         plt.title(title)
-        plt.colorbar(surface, shrink=0.5, aspect=10, orientation="vertical", pad=0.2)
+        plt.colorbar(surface, shrink=0.5, aspect=10, orientation="vertical")
         plt.show()
 
 
