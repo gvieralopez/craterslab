@@ -579,10 +579,10 @@ class Crater:
         ax.set_box_aspect(aspect)
 
 
-        # if self.is_valid:
-        #     p = self.ellipse.ellipse_patch(scale=self.image_resolution, color="red")
-        #     ax.add_patch(p)
-        #     art3d.pathpatch_2d_to_3d(p, z=max(self._profile.h), zdir='z') 
+        if self.is_valid:
+            p = self.ellipse.ellipse_patch(scale=self.image_resolution, color="red")
+            ax.add_patch(p)
+            art3d.pathpatch_2d_to_3d(p, z=max(self._profile.h), zdir='z') 
 
         # Write labels, title and color bar
         ax.set_xlabel("X[mm]", fontweight="bold", fontsize=13, labelpad=10)

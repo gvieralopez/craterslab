@@ -6,7 +6,8 @@ from pycraters.craters import Crater
 image_resolution = 2.8025  # Distance in mm between adjacent pixels 
 image_depth = 1.0  # Amount of mm on every increment on image color
 
-for i in ["aFig4", "bFig4", "cFig4", "bFig5"]:
+# for i in ["aFig4", "bFig4", "cFig4", "bFig5"]:
+for i in ["bFig5"]:
 
     print(i)
 
