@@ -1,0 +1,55 @@
+[tool.poetry]
+name = "craterslab"
+version = "0.1.0"
+description = ""
+license = "MIT"
+authors = ["Gustavo Viera López <gvieralopez@gmail.com>", "Frank Corrales Machín <frankcm.work@gmail.com>"]
+readme = "README.MD"
+homepage = "https://github.com/gvieralopez/craters"
+repository = "https://github.com/gvieralopez/craters"
+documentation = "https://github.com/gvieralopez/craters"
+keywords = ["craters", "depth maps", "lidar", "impacts"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+]
+
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+numpy = "^1.25.1"
+opencv-python = "^4.8.0"
+scipy = "^1.11.1"
+
+[tool.poetry.dev-dependencies]
+isort = "^5.12.0"
+black = "^23.3.0"
+flake8 = "^6.0.0"
+mypy = "^1.4.1"
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 88
+exclude = "venv"
+
+[tool.flake8]
+max-line-length = 88
+
+[tool.mypy]
+python_version = "3.9"
+show_error_codes = true
+ignore_missing_imports = true
+strict = true
+
+[tool.pytest]
+addopts = "-vv --cov=your_module --cov-report=term-missing"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.8"]
+build-backend = "poetry.core.masonry.api"
