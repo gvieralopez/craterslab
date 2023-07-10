@@ -1,7 +1,7 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.patches import Ellipse
-from scipy.optimize import minimize, Bounds
+from scipy.optimize import Bounds, minimize
 
 
 def fit_elipse(

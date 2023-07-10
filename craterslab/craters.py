@@ -1,16 +1,17 @@
-import math
 import logging
+import math
+from collections.abc import Callable
 
 import cv2
-import scipy.ndimage
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse
 import mpl_toolkits.mplot3d.art3d as art3d
+import numpy as np
+import scipy.ndimage
+from matplotlib.patches import Ellipse
 from mpl_toolkits.mplot3d import Axes3D
 from pycraters.elipse import fit_elipse
-from collections.abc import Callable
 from scipy.spatial import distance
+
 
 def crop_img(img: np.ndarray, x: int, y: int, w: int, h: int, gap: int) -> np.ndarray:
     """
