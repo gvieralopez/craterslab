@@ -154,5 +154,6 @@ class EllipticalModel:
             cx, cy, da, db = (scale * i for i in [cx, cy, da, db])
         return Ellipse((cx, cy), da, db, theta_degree, fill=False, color=color)
 
-    # def max_profile_bounds(self):
-    #     return self._compute_profile_bounds(self.theta, self.cx, self.cy)
+    def max_profile(self) -> Profile:
+        bound = self._compute_profile_bounds(self.theta, self.cx, self.cy)
+        return Profile(self.dm, bound[0], bound[1])
