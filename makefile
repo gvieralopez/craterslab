@@ -1,16 +1,16 @@
 PROJECT_NAME=craterslab
 
 formatcheck:
-	isort -rc $(PROJECT_NAME)
-	black --check .
+	isort $(PROJECT_NAME)
+	black  .
 	
 typecheck:
-	mypy
+	mypy .
 
 lint:
-	flake8 
+	flake8 .
 
 test:
 	pytest
 
-qa: formatcheck typecheck lint test
+qa: formatcheck lint test typecheck  
