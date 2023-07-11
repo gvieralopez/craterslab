@@ -1,22 +1,24 @@
-from pycraters.lidar import load_from_file
-from pycraters.craters import Crater
+from craterslab.sensors import DepthMap, SensorResolution
+from craterslab.visuals import plot_2D, plot_3D, plot_profile
+from craterslab.profiles import Profile
+from craterslab.ellipse import EllipticalModel
+
+# Define sensor resolution
+KINECT_RESOLUTION = SensorResolution(2.8025, 2.8025, 1.0)
 
 # Define data sources
-after_impact_data = load_from_file('crater_aFig4.mat')
-before_impact_data = load_from_file('plano_aFig4.mat')
+d0 = DepthMap.from_mat_file("plano_aFig4.mat", resolution=KINECT_RESOLUTION)
+df = DepthMap.from_mat_file("crater_aFig4.mat", resolution=KINECT_RESOLUTION)
 
-# Define physical constants
-image_resolution = 2.8025  # Distance in mm between adjacent pixels 
-image_depth = 1.0  # Amount of mm on every increment on image color
+# Compute the difference between the surface before and after the impact
+depth_map = d0 - df
+depth_map.auto_crop()
 
-# Create the Crater object
-c = Crater(before_impact_data, after_impact_data, image_resolution, image_depth)
+p = Profile(depth_map, start_point=(0, 25), end_point=(120, 25))
+em = EllipticalModel(depth_map, 20)
 
-# Plot the crater in 3D
-c.plot_3D(title='Crater view in 3D', preview_scale=(1, 1, 4))
+plot_3D(depth_map, profile=p, ellipse=em, preview_scale=(1, 1, 4))
 
-# Plot a transversal cut of the crater
-c.plot_profile('Crater profile')
+plot_2D(depth_map, profile=p, ellipse=em)
 
-# Inspect observables
-print(c)
+plot_profile(p)
