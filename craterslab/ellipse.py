@@ -44,9 +44,15 @@ def fit_elipse(
 
     # Fit the ellipse to the points using the objective function and the initial guess
     result = minimize(objective, params0, args=(x, y), bounds=bounds)
+    a, b, cx, cy, theta = result.x
+
+    if a < b:
+        a, b = b, a
+        theta += np.pi/2
+        theta = theta % np.pi
 
     # Extract the fitted ellipse parameters from the optimization result, and create the `Ellipse` patch using these parameters
-    return result.x
+    return a, b, cx, cy, theta
 
 
 class EllipticalModel:
