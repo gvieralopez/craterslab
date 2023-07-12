@@ -1,102 +1,92 @@
-import logging
 import math
+from dataclasses import dataclass
+from enum import Enum
 
 import numpy as np
 
+from craterslab.ellipse import EllipticalModel
+from craterslab.sensors import DepthMap
 
-class Crater:
+
+class SurfaceType(Enum):
+    SIMPLE_CRATER = 1
+    COMPLEX_CRATER = 2
+    SAND_MOUND = 3
+    UNKNOWN = 4
+
+    def __str__(self):
+        return self.name.replace("_", " ").capitalize()
+
+
+# Groups of surfaces
+CRATER_SURFACES = [SurfaceType.SIMPLE_CRATER, SurfaceType.COMPLEX_CRATER]
+ALL_KNOWN_SURFACES = CRATER_SURFACES + [SurfaceType.SAND_MOUND]
+
+
+@dataclass
+class Observable:
+    name: str
+    symbol: str
+    value: float
+    units: str
+
+    def __str__(self):
+        return f"{self.name} ({self.symbol}): {self.value:.2f} {self.units}"
+
+
+class Surface:
     """
-    Computes and stores all the crater observables given two depth maps from
-    before and after the impact
+    Describes a surface found in a Depth Map
     """
 
-    def __init__(
-        self,
-        image_before: np.ndarray,
-        image_after: np.ndarray,
-        image_resolution: float,
-        image_depth: float,
-        ellipse_points: int = 20,
-    ):
-        self.image_resolution = image_resolution
-        self.image_depth = image_depth
+    def __init__(self, depth_map: DepthMap, ellipse_points: int = 20) -> None:
+        self.dm = depth_map
+        self.em = EllipticalModel(depth_map, ellipse_points)
+        self.max_profile = self.em.max_profile()
+        self.type = self.classify()
+        self.available_observables = {
+            "d_max": {"func": self.d_max, "compute_for": ALL_KNOWN_SURFACES},
+            "epsilon": {"func": self.epsilon, "compute_for": CRATER_SURFACES},
+            "D": {"func": self.D, "compute_for": CRATER_SURFACES},
+            "H_cp": {"func": self.H_cp, "compute_for": [SurfaceType.COMPLEX_CRATER]},
+        }
+        self.observables = self.compute_observables()
 
-        self._crater_image(image_before, image_after)
-        ellipse = EllipticalModel(self.img, ellipse_points)
-        self.ellipse = ellipse if ellipse.is_ok else None
-        self._set_default_profile()
+    def __repr__(self) -> str:
+        output = "\n".join([str(o) for o_id, o in self.observables.items()])
+        return f"\nFound: {self.type}\n\n{output}"
 
-        if self.is_valid:
-            self._compute_observables()
+    def classify(self) -> SurfaceType:
+        # TODO: Update this with a proper classification
+        return SurfaceType.SIMPLE_CRATER
 
-    def _set_profile(self, p1, p2) -> bool:
-        try:
-            self._profile = Profile(
-                self.img,
-                start_point=p1,
-                end_point=p2,
-                xy_resolution=self.image_resolution,
-                z_resolution=self.image_depth,
-            )
-            return True
+    def compute_observables(self) -> dict[str, Observable]:
+        observables = {}
+        for o_id, details in self.available_observables.items():
+            if self.type in details["compute_for"]:
+                observables[o_id] = details["func"]()
+        return observables
 
-        except ValueError:
-            return False
+    def _d_max(self) -> float:
+        return np.min(self.dm.map) * self.dm.z_res
 
-    def _set_default_profile(self):
-        if self.ellipse is not None:
-            p1, p2 = self.ellipse.max_profile_bounds()
-            if self._set_profile(p1, p2):
-                return
-        p1, p2 = (0, 0), self.img.shape
-        self._set_profile(p1, p2)
-        logging.warning(
-            "Failed to set default profile using the elliptical model."
-            "Using default profile as y=x"
-        )
+    def d_max(self) -> Observable:
+        val = self._d_max()
+        units = self.dm.sensor.scale
+        return Observable("Apparent Depth", "d_max", val, units)
 
-    def __repr__(self):
-        if self.is_valid:
-            return self._observables_summary()
-        logging.error("Data does not seems to represent a valid crater")
-        return ""
+    def H_cp(self) -> Observable:
+        val = "-"  # TODO: Compute
+        units = self.dm.sensor.scale
+        return Observable("Heigh of central peak", "H_cp", val, units)
 
-    @property
-    def is_valid(self) -> bool:
-        """
-        Return a boolean to indicate whether the data is likely to be from a
-        valid crater
-        """
-        return self.ellipse is not None
+    def epsilon(self) -> Observable:
+        a, b = self.em.a, self.em.b
+        val = math.sqrt(a**2 - b**2) / a
+        units = ""
+        return Observable("Eccentricity", "epsilon", val, units)
 
-    @property
-    def scale(self):
-        """
-        Provides a tuple indicating the sensor resolution on each axis
-        """
-        return (self.image_resolution, self.image_resolution, self.image_depth)
-
-    @property
-    def data(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Provides de-normalized crater data (i.e, data is presented on actual
-        scale computed using the characteristics of the sensor)
-        """
-        y = np.linspace(0, self.img.shape[0] * self.scale[0], self.img.shape[0])
-        x = np.linspace(0, self.img.shape[1] * self.scale[1], self.img.shape[1])
-        X, Y = np.meshgrid(x, y)
-        Z = self.img * self.scale[2]
-        return X, Y, Z
-
-    def _compute_observables(self):
-        self.da = np.min(self.img) * self.image_depth
-        self.D = 2 * abs(self.ellipse.a) * self.image_resolution
-
-    def _observables_summary(self):
-        return f"""
-        Crater observables computed:
-        ----------------------------
-
-        - Max depth: {self.da:.2f} mm 
-        - Diameter: {self.D:.2f} mm 
-        """
+    def D(self) -> Observable:
+        val = self.em.a * 2 * self.dm.x_res
+        units = self.dm.sensor.scale
+        return Observable("Diameter", "D", val, units)
