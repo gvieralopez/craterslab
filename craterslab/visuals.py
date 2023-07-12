@@ -1,8 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, pathpatch_2d_to_3d
-from craterslab.ellipse import EllipticalModel
 
+from craterslab.ellipse import EllipticalModel
 from craterslab.profiles import Profile
 from craterslab.sensors import DepthMap
 
@@ -42,7 +42,7 @@ def plot_3D(
     if ellipse is not None:
         p = ellipse.ellipse_patch(scale=dm.x_res, color="red")
         ax.add_patch(p)
-        pathpatch_2d_to_3d(p, z=np.max(dm.map), zdir='z')
+        pathpatch_2d_to_3d(p, z=np.max(dm.map), zdir="z")
 
     # Plot the profile if any
     if profile is not None:
@@ -89,7 +89,7 @@ def plot_2D(
 
     if profile is not None:
         ax.plot(profile.x_bounds_px, profile.y_bounds_px, "ro-")
-    
+
     if ellipse is not None:
         ax.add_patch(ellipse.ellipse_patch())
         ax.scatter(*list(zip(*ellipse.landmarks)))
@@ -121,6 +121,6 @@ def plot_profile(profile: Profile) -> None:
     # ax.scatter(profile.s[selected_indices], profile.h[selected_indices])
     # for x_bounds, z_bounds in profile.walls:
     # ax.plot(x_bounds, z_bounds, color="blue", linestyle="--")
-    
+
     ax.grid()
     plt.show()

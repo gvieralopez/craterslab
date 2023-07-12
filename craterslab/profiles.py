@@ -103,13 +103,13 @@ class Profile:
     def index2xyz(self, index: int) -> tuple[float, float, float]:
         xi, yi, zi = self._index2xyz(index)
         return xi * self.s_res, yi * self.s_res, zi * self.h_res
-    
+
     # TODO: Temporal methods:
     def compute_extrema(self):
         dhds = np.gradient(self._h, self._s)
         extrema_indices = np.where(np.diff(np.sign(dhds)))[0]
         sorted_indices = extrema_indices[np.argsort(self.h[extrema_indices])]
-    
+
         self.b1 = next(filter(lambda i: i <= len(self) // 2, sorted_indices), -1)
         self.b2 = next(filter(lambda i: i > len(self) // 2, sorted_indices), -1)
 
@@ -118,8 +118,6 @@ class Profile:
         self.t1 = next(filter(lambda i: i <= third, indices), -1)
         self.tc = next(filter(lambda i: third < i <= 2 * third, indices), -1)
         self.t2 = next(filter(lambda i: i > 2 * third, indices), -1)
-
-
 
     # @property
     # def walls(self):
@@ -132,7 +130,6 @@ class Profile:
     #     left_wall = self._compute_wall_bounds(1)
     #     right_wall = self._compute_wall_bounds(2)
     #     return left_wall, right_wall
-
 
     # def _compute_slope(self, i: int, j: int):
     #     """

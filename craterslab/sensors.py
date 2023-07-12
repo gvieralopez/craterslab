@@ -57,7 +57,6 @@ class DepthMap:
         self, threshold: float = AUTO_CROP_THRESHOLD, padding: int = AUTO_CROP_PADDING
     ) -> None:
         bb = compute_bounding_box(self.map, threshold=threshold)
-        print(bb)
         self.crop(bb, padding)
 
     @property

@@ -48,7 +48,7 @@ def fit_elipse(
 
     if a < b:
         a, b = b, a
-        theta += np.pi/2
+        theta += np.pi / 2
         theta = theta % np.pi
 
     # Extract the fitted ellipse parameters from the optimization result, and create the `Ellipse` patch using these parameters
@@ -112,7 +112,7 @@ class EllipticalModel:
     ) -> list[tuple[float, float]]:
         landmarks = []
         for bound in bounds:
-            landmarks += self._compute_complementary_landmarks(bound)             
+            landmarks += self._compute_complementary_landmarks(bound)
         return landmarks
 
     def _compute_complementary_landmarks(
@@ -129,7 +129,6 @@ class EllipticalModel:
             x, y, z = p._index2xyz(i)
             lm.append((x, y))
         return lm
-
 
     def _validate_landmark_points(self) -> bool:
         if len(self.landmarks) < self.points:

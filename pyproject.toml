@@ -3,7 +3,10 @@ name = "craterslab"
 version = "0.1.0"
 description = ""
 license = "MIT"
-authors = ["Gustavo Viera López <gvieralopez@gmail.com>", "Frank Corrales Machín <frankcm.work@gmail.com>"]
+authors = [
+  "Gustavo Viera López <gvieralopez@gmail.com>",
+  "Frank Corrales Machín <frankcm.work@gmail.com>",
+]
 readme = "README.MD"
 homepage = "https://github.com/gvieralopez/craters"
 repository = "https://github.com/gvieralopez/craters"
