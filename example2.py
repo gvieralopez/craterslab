@@ -11,8 +11,16 @@ for i in range(1, 30):
     print(f"Analizing sample {i}")
 
     # Define data sources
-    d0 = DepthMap.from_mat_file(f"planoexp{i}.mat", data_folder='data/Fluized_sand', resolution=KINECT_RESOLUTION)
-    df = DepthMap.from_mat_file(f"craterexp{i}.mat", data_folder='data/Fluized_sand', resolution=KINECT_RESOLUTION)
+    d0 = DepthMap.from_mat_file(
+        f"planoexp{i}.mat",
+        data_folder="data/Fluized_sand",
+        resolution=KINECT_RESOLUTION,
+    )
+    df = DepthMap.from_mat_file(
+        f"craterexp{i}.mat",
+        data_folder="data/Fluized_sand",
+        resolution=KINECT_RESOLUTION,
+    )
 
     # Compute the difference between the surface before and after the impact
     depth_map = d0 - df
@@ -24,5 +32,3 @@ for i in range(1, 30):
     plot_3D(depth_map, profile=p, ellipse=em, preview_scale=(1, 1, 4))
     plot_2D(depth_map, profile=p, ellipse=em)
     plot_profile(p)
-
-

@@ -7,7 +7,6 @@ from craterslab.ellipse import EllipticalModel
 KINECT_RESOLUTION = SensorResolution(2.8025, 2.8025, 1.0)
 
 for i in ["aFig4", "bFig4", "cFig4", "bFig5"]:
-
     print(f"Analizing sample {i}")
 
     # Define data sources
@@ -24,4 +23,3 @@ for i in ["aFig4", "bFig4", "cFig4", "bFig5"]:
     plot_3D(depth_map, profile=p, ellipse=em, preview_scale=(1, 1, 4))
     plot_2D(depth_map, profile=p, ellipse=em)
     plot_profile(p)
-
