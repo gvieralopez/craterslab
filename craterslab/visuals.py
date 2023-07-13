@@ -103,19 +103,19 @@ def plot_profile(profile: Profile) -> None:
     fig, ax = plt.subplots()  # create figure and axes
     ax.plot(profile.s, profile.h)
     ax.set_ylabel(
-        f"Depth [{profile.dm.sensor.scale}]",
-        fontweight="bold",
+        f"Depth ({profile.dm.sensor.scale})",
+        #fontweight="bold",
         labelpad=13,
-        fontsize=15,
+        fontsize=34,
     )
     ax.set_xlabel(
-        f"Distance [{profile.dm.sensor.scale}]",
-        fontweight="bold",
+        f"Distance along D = 2a  ({profile.dm.sensor.scale})",
+        #fontweight="bold",
         labelpad=13,
-        fontsize=15,
+        fontsize=34,
     )
-    ax.tick_params(axis="x", labelsize=15)
-    ax.tick_params(axis="y", labelsize=15)
+    ax.tick_params(axis="x", labelsize=32)
+    ax.tick_params(axis="y", labelsize=32)
 
     # selected_indices = np.array(profile.key_indexes)
     # ax.scatter(profile.s[selected_indices], profile.h[selected_indices])
