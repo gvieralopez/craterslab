@@ -162,3 +162,6 @@ class EllipticalModel:
     def max_profile(self) -> Profile:
         bound = self._compute_profile_bounds(self.theta, self.cx, self.cy)
         return Profile(self.dm, bound[0], bound[1])
+
+    def params(self) -> tuple[float, float, float, float, float]:
+        return self.a, self.b, self.cx, self.cy, self.theta
