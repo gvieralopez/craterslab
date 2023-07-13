@@ -95,8 +95,20 @@ class Surface:
     def _ellipse_perimeter(self) -> np.ndarray[bool]:
         return np.isclose(self._ellipse(), 1, rtol=0, atol=0.05).T
 
+    def _ellipse_content(self) -> np.ndarray[bool]:
+        return np.transpose(self._ellipse() <= 1)
+
     def _h_rim(self):
-        return self.dm.map[self._ellipse_perimeter()]
+        return self.dm.map[self._ellipse_perimeter()] * self.dm.z_res
+
+    def _mean_h_rim(self) -> float:
+        return np.mean(self._h_rim())
+
+    def _V_in(self) -> float:
+        h_max, h_min = self._mean_h_rim(), self._d_max()
+        inner_values = self.dm.map[self._ellipse_content()] - h_min
+        positive_sum = np.sum(inner_values[inner_values <= h_max - h_min])
+        return positive_sum * self.dm.x_res * self.dm.y_res
 
     def d_max(self) -> Observable:
         val = self._d_max()
@@ -125,12 +137,12 @@ class Surface:
         return Observable("Maximum heigh", "H_cp", val, units)
 
     def mean_h_rim(self) -> Observable:
-        val = np.mean(self._h_rim())
+        val = self._mean_h_rim()
         units = self.dm.sensor.scale
         return Observable("Mean Heigh over the rim", "mean_h_rim", val, units)
 
     def V_in(self) -> Observable:
-        val = -1  # TODO: Compute
+        val = self._V_in()
         units = f"{self.dm.sensor.scale}³"
         return Observable("Concavity Volume", "V_in", val, units)
 
