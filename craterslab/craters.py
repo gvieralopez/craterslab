@@ -49,6 +49,11 @@ class Surface:
             "epsilon": {"func": self.epsilon, "compute_for": CRATER_SURFACES},
             "D": {"func": self.D, "compute_for": CRATER_SURFACES},
             "H_cp": {"func": self.H_cp, "compute_for": [SurfaceType.COMPLEX_CRATER]},
+            "H_m": {"func": self.H_m, "compute_for": ALL_KNOWN_SURFACES},
+            "mean_h_rim": {"func": self.mean_h_rim, "compute_for": CRATER_SURFACES},
+            "V_in": {"func": self.V_in, "compute_for": CRATER_SURFACES},
+            "V_ex": {"func": self.V_ex, "compute_for": CRATER_SURFACES},
+            "V_exc": {"func": self.V_exc, "compute_for": ALL_KNOWN_SURFACES},    
         }
         self.observables = self.compute_observables()
 
@@ -75,11 +80,6 @@ class Surface:
         units = self.dm.sensor.scale
         return Observable("Apparent Depth", "d_max", val, units)
 
-    def H_cp(self) -> Observable:
-        val = "-"  # TODO: Compute
-        units = self.dm.sensor.scale
-        return Observable("Heigh of central peak", "H_cp", val, units)
-
     def epsilon(self) -> Observable:
         a, b = self.em.a, self.em.b
         val = math.sqrt(a**2 - b**2) / a
@@ -90,3 +90,34 @@ class Surface:
         val = self.em.a * 2 * self.dm.x_res
         units = self.dm.sensor.scale
         return Observable("Diameter", "D", val, units)
+    
+    def H_cp(self) -> Observable:
+        val = -1  # TODO: Compute
+        units = self.dm.sensor.scale
+        return Observable("Heigh of central peak", "H_cp", val, units)
+    
+    def H_m(self) -> Observable:
+        val = -1  # TODO: Compute
+        units = self.dm.sensor.scale
+        return Observable("Maximum heigh", "H_cp", val, units)
+    
+    def mean_h_rim(self) -> Observable:
+        val = -1  # TODO: Compute
+        units = self.dm.sensor.scale
+        return Observable("Mean Heigh over the rim", "mean_h_rim", val, units)
+    
+    def V_in(self) -> Observable:
+        val = -1  # TODO: Compute
+        units = f"{self.dm.sensor.scale}³"
+        return Observable("Concavity Volume", "V_in", val, units)
+    
+    
+    def V_ex(self) -> Observable:
+        val = -1  # TODO: Compute
+        units = f"{self.dm.sensor.scale}³"
+        return Observable("Excavated Volume", "V_ex", val, units)
+    
+    def V_exc(self) -> Observable:
+        val = -1  # TODO: Compute
+        units = f"{self.dm.sensor.scale}³"
+        return Observable("Excess Volume", "V_exc", val, units)
