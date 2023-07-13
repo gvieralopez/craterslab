@@ -78,6 +78,26 @@ class Surface:
     def _H_max(self) -> float:
         return np.max(self.dm.map) * self.dm.z_res
 
+    def _ellipse(self) -> np.ndarray:
+        # create a meshgrid of x and y coordinates
+        x, y = np.ogrid[: self.dm.x_count, : self.dm.y_count]
+
+        # calculate the ellipse equation for each point in the grid
+        a, b, x0, y0, theta = self.em.params()
+        x_rot = (x - x0) * np.cos(theta) - (y - y0) * np.sin(
+            theta
+        )  # rotate x coordinates
+        y_rot = (x - x0) * np.sin(theta) + (y - y0) * np.cos(
+            theta
+        )  # rotate y coordinates
+        return ((x_rot) ** 2 / a**2) + ((y_rot) ** 2 / b**2)
+
+    def _ellipse_perimeter(self) -> np.ndarray[bool]:
+        return np.isclose(self._ellipse(), 1, rtol=0, atol=0.05).T
+
+    def _h_rim(self):
+        return self.dm.map[self._ellipse_perimeter()]
+
     def d_max(self) -> Observable:
         val = self._d_max()
         units = self.dm.sensor.scale
@@ -105,7 +125,7 @@ class Surface:
         return Observable("Maximum heigh", "H_cp", val, units)
 
     def mean_h_rim(self) -> Observable:
-        val = -1  # TODO: Compute
+        val = np.mean(self._h_rim())
         units = self.dm.sensor.scale
         return Observable("Mean Heigh over the rim", "mean_h_rim", val, units)
 
