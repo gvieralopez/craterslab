@@ -53,7 +53,7 @@ class Surface:
             "mean_h_rim": {"func": self.mean_h_rim, "compute_for": CRATER_SURFACES},
             "V_in": {"func": self.V_in, "compute_for": CRATER_SURFACES},
             "V_ex": {"func": self.V_ex, "compute_for": CRATER_SURFACES},
-            "V_exc": {"func": self.V_exc, "compute_for": ALL_KNOWN_SURFACES},    
+            "V_exc": {"func": self.V_exc, "compute_for": ALL_KNOWN_SURFACES},
         }
         self.observables = self.compute_observables()
 
@@ -74,7 +74,7 @@ class Surface:
 
     def _d_max(self) -> float:
         return np.min(self.dm.map) * self.dm.z_res
-    
+
     def _H_max(self) -> float:
         return np.max(self.dm.map) * self.dm.z_res
 
@@ -93,34 +93,34 @@ class Surface:
         val = self.em.a * 2 * self.dm.x_res
         units = self.dm.sensor.scale
         return Observable("Diameter", "D", val, units)
-    
+
     def H_cp(self) -> Observable:
         val = -1  # TODO: Compute
         units = self.dm.sensor.scale
         return Observable("Heigh of central peak", "H_cp", val, units)
-    
+
     def H_m(self) -> Observable:
-        val = self._H_max() 
+        val = self._H_max()
         units = self.dm.sensor.scale
         return Observable("Maximum heigh", "H_cp", val, units)
-    
+
     def mean_h_rim(self) -> Observable:
         val = -1  # TODO: Compute
         units = self.dm.sensor.scale
         return Observable("Mean Heigh over the rim", "mean_h_rim", val, units)
-    
+
     def V_in(self) -> Observable:
         val = -1  # TODO: Compute
         units = f"{self.dm.sensor.scale}³"
         return Observable("Concavity Volume", "V_in", val, units)
-    
-    
+
     def V_ex(self) -> Observable:
         val = -1  # TODO: Compute
         units = f"{self.dm.sensor.scale}³"
         return Observable("Excavated Volume", "V_ex", val, units)
-    
+
     def V_exc(self) -> Observable:
-        val = -1  # TODO: Compute
+        positive_sum = np.sum(self.dm.map[self.dm.map > 0])
+        val = positive_sum * self.dm.x_res * self.dm.y_res
         units = f"{self.dm.sensor.scale}³"
         return Observable("Excess Volume", "V_exc", val, units)
