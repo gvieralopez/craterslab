@@ -7,7 +7,7 @@ import scipy.io
 from craterslab.images import compute_bounding_box, crop_img
 
 VALID_SCALES = ["mm", "cm", "dm", "m", "km"]
-AUTO_CROP_THRESHOLD = 1.0
+AUTO_CROP_THRESHOLD = 1.5
 AUTO_CROP_PADDING = 10
 
 
