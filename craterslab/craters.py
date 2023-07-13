@@ -74,6 +74,9 @@ class Surface:
 
     def _d_max(self) -> float:
         return np.min(self.dm.map) * self.dm.z_res
+    
+    def _H_max(self) -> float:
+        return np.max(self.dm.map) * self.dm.z_res
 
     def d_max(self) -> Observable:
         val = self._d_max()
@@ -97,7 +100,7 @@ class Surface:
         return Observable("Heigh of central peak", "H_cp", val, units)
     
     def H_m(self) -> Observable:
-        val = -1  # TODO: Compute
+        val = self._H_max() 
         units = self.dm.sensor.scale
         return Observable("Maximum heigh", "H_cp", val, units)
     
