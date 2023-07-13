@@ -110,6 +110,11 @@ class Surface:
         positive_sum = np.sum(inner_values[inner_values <= h_max - h_min])
         return positive_sum * self.dm.x_res * self.dm.y_res
 
+    def _V_ex(self) -> float:
+        inner_values = self.dm.map[self._ellipse_content()]
+        negative_sum = - np.sum(inner_values[inner_values < 0])
+        return negative_sum * self.dm.x_res * self.dm.y_res
+    
     def d_max(self) -> Observable:
         val = self._d_max()
         units = self.dm.sensor.scale
@@ -147,7 +152,7 @@ class Surface:
         return Observable("Concavity Volume", "V_in", val, units)
 
     def V_ex(self) -> Observable:
-        val = -1  # TODO: Compute
+        val = self._V_ex()
         units = f"{self.dm.sensor.scale}³"
         return Observable("Excavated Volume", "V_ex", val, units)
 
