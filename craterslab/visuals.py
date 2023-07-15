@@ -49,7 +49,7 @@ def plot_3D(
         x1, x2 = profile.x_bounds
         y1, y2 = profile.y_bounds
         z1, z2 = profile.z_bounds
-        dz = abs(z2 - z1)
+        dz = 0.25 * abs(z2 - z1)
         z1p, z2p = z1 - dz, z2 + dz
         points = [
             (x1, y1, z1p),
@@ -57,7 +57,7 @@ def plot_3D(
             (x2, y2, z2p),
             (x2, y2, z1p),
         ]
-        ax.add_collection3d(Poly3DCollection([points], facecolors="r", alpha=0.5))
+        ax.add_collection3d(Poly3DCollection([points], facecolors="tab:brown", alpha=0.6))
 
     ax.set_xlabel(f"X[{dm.sensor.scale}]", fontweight="bold", fontsize=13, labelpad=10)
     ax.set_ylabel(f"Y[{dm.sensor.scale}]", fontweight="bold", fontsize=13, labelpad=10)
@@ -86,6 +86,9 @@ def plot_2D(
     ax.set_title(title, fontweight="bold")
     ax.set_xlim(0, dm.x_count)
     ax.set_ylim(0, dm.y_count)
+
+    ax.tick_params(axis="x", labelsize=15)
+    ax.tick_params(axis="y", labelsize=15)
 
     if profile is not None:
         ax.plot(profile.x_bounds_px, profile.y_bounds_px, "ro-")
