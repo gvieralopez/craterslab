@@ -64,14 +64,15 @@ def plot_3D(
             Poly3DCollection([points], facecolors="tab:brown", alpha=0.6)
         )
 
-    ax.set_xlabel(f"X[{dm.sensor.scale}]", fontweight="bold", fontsize=13, labelpad=10)
-    ax.set_ylabel(f"Y[{dm.sensor.scale}]", fontweight="bold", fontsize=13, labelpad=10)
-    ax.set_zlabel(f"Z[{dm.sensor.scale}]", fontweight="bold", fontsize=13, labelpad=10)
-    ax.tick_params(axis="x", labelsize=13)
-    ax.tick_params(axis="y", labelsize=13)
-    ax.tick_params(axis="z", labelsize=13)
+    ax.set_xlabel(f"X[{dm.sensor.scale}]", fontweight="bold", fontsize=15, labelpad=10, loc='center')
+    ax.set_ylabel(f"Y[{dm.sensor.scale}]", fontweight="bold", fontsize=15, labelpad=10, rotation=90, loc='center')
+    ax.set_zlabel(f"Z[{dm.sensor.scale}]", fontweight="bold", fontsize=15, labelpad=10)
+    ax.tick_params(axis="x", labelsize=15)
+    ax.tick_params(axis="y", labelsize=15)
+    ax.tick_params(axis="z", labelsize=15)
     plt.title(title)
-    plt.colorbar(surface, shrink=0.5, aspect=10, orientation="vertical")
+    cbar = plt.colorbar(surface, shrink=0.7, aspect=13, orientation="vertical")
+    cbar.ax.tick_params(labelsize=15)
     plt.show(block=block)
 
 
@@ -87,8 +88,8 @@ def plot_2D(
     """
     fig, ax = plt.subplots()
     ax.imshow(dm.map)
-    ax.set_xlabel("X [px]", fontweight="bold")
-    ax.set_ylabel("Y [px]", fontweight="bold")
+    ax.set_xlabel("X [px]", fontweight="bold", fontsize=15)
+    ax.set_ylabel("Y [px]", fontweight="bold", fontsize=15)
     ax.set_title(title, fontweight="bold")
     ax.set_xlim(0, dm.x_count)
     ax.set_ylim(0, dm.y_count)
@@ -115,16 +116,16 @@ def plot_profile(profile: Profile, block: bool = False) -> None:
         f"Depth ({profile.dm.sensor.scale})",
         # fontweight="bold",
         labelpad=13,
-        fontsize=34,
+        fontsize=30,
     )
     ax.set_xlabel(
         f"Distance along D = 2a  ({profile.dm.sensor.scale})",
         # fontweight="bold",
         labelpad=13,
-        fontsize=34,
+        fontsize=30,
     )
-    ax.tick_params(axis="x", labelsize=32)
-    ax.tick_params(axis="y", labelsize=32)
+    ax.tick_params(axis="x", labelsize=26)
+    ax.tick_params(axis="y", labelsize=26)
 
     # selected_indices = np.array(profile.key_indexes)
     # ax.scatter(profile.s[selected_indices], profile.h[selected_indices])
