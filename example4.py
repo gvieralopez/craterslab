@@ -1,5 +1,8 @@
+import matplotlib.pyplot as plt
+
 from craterslab.craters import Surface
 from craterslab.sensors import DepthMap, SensorResolution
+
 
 # Define sensor resolution
 KINECT_RESOLUTION = SensorResolution(2.8025, 2.8025, 1.0)
@@ -26,7 +29,9 @@ for i in range(1, 38):
     depth_map.auto_crop()
 
     s = Surface(depth_map)
-    diameters.append(s.observables['D'].value)
+    diameters.append(s.observables["D"].value)
+
+plt.plot(diameters)
+plt.show()
 
 print(diameters)
-
