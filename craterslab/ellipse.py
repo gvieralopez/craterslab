@@ -1,7 +1,6 @@
 import logging
 import math
 
-import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Ellipse
 from scipy.optimize import Bounds, minimize
@@ -91,21 +90,37 @@ class EllipticalModel:
     def _compute_profile_bounds(
         self, angle: float, center_x: int, center_y: int
     ) -> tuple[tuple[int, int], tuple[int, int]]:
-        max_radius = self._compute_max_radius(angle, center_x, center_y)
-        x0 = int(round(center_x + max_radius * np.cos(angle)))
-        y0 = int(round(center_y + max_radius * np.sin(angle)))
-        xf = int(round(center_x + max_radius * np.cos(angle + np.pi)))
-        yf = int(round(center_y + max_radius * np.sin(angle + np.pi)))
-        return (x0, y0), (xf, yf)
+        # Calculate the slope and y-intercept of the line
+        m = np.tan(angle)
+        n = center_y - m * center_x
 
-    def _compute_max_radius(self, angle: float, center_x: int, center_y: int) -> float:
-        cos_angle = float(np.abs(np.cos(angle)))
-        sin_angle = float(np.abs(np.sin(angle)))
-        if cos_angle == 0:
-            return center_y / sin_angle
-        elif sin_angle == 0:
-            return center_x / cos_angle
-        return min(center_y / sin_angle, center_x / cos_angle)
+        # Define the bounds
+        x_max, y_max = self.dm.x_count - 1, self.dm.y_count - 1
+
+        # Calculate the x- and y-coordinates of the four possible intersection points
+        x1, y1 = 0, n
+        x2 = x_max
+        y2 = m * x2 + n
+        if m == 0:
+            return (x1, y1), (x2, y2)
+        y3 = 0
+        x3 = (y3 - n) / m
+        y4 = y_max
+        x4 = (y4 - n) / m
+
+        # Find the two intersection points that lie on the border of the box
+        points = []
+        if (0 <= x1 <= x_max) and (0 <= y1 <= y_max):
+            points.append((x1, y1))
+        if (0 <= x2 <= x_max) and (0 <= y2 <= y_max):
+            points.append((x2, y2))
+        if (0 <= x3 <= x_max) and (0 <= y3 <= y_max):
+            points.append((x3, y3))
+        if (0 <= x4 <= x_max) and (0 <= y4 <= y_max):
+            points.append((x4, y4))
+
+        return points
+
 
     def _compute_landmarks(
         self, bounds: list[tuple[tuple[int, int], tuple[int, int]]]
@@ -146,8 +161,6 @@ class EllipticalModel:
 
     def _compute_ellipse(self) -> None:
         x, y = map(np.array, zip(*self.landmarks))
-        # x = np.array([p[0] for p in self.landmarks])
-        # y = np.array([p[1] for p in self.landmarks])
         xrange, yrange = (0, self.dm.x_count), (0, self.dm.y_count)
         self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y, xrange, yrange)
 
