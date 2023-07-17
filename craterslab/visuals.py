@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, pathpatch_2d_to_3d
 
-from craterslab.ellipse import EllipticalModel
+from craterslab.ellipse import EllipseVisualConfig, EllipticalModel
 from craterslab.profiles import Profile
 from craterslab.sensors import DepthMap
 
@@ -14,6 +14,7 @@ def plot_3D(
     title: str = "Crater view in 3D",
     preview_scale: tuple[float, float, float] = (1.0, 1.0, 1.0),
     block: bool = False,
+    ellipse_config: EllipseVisualConfig | None = None,
 ) -> None:
     """
     Create a 3D plot of the surface considering the sensor resolution.
@@ -41,9 +42,10 @@ def plot_3D(
     ax.set_box_aspect(aspect)
 
     if ellipse is not None:
-        p = ellipse.ellipse_patch(scale=dm.x_res, color="red")
+        visual_config = ellipse_config if ellipse_config is not None else ellipse.visual
+        p = ellipse.ellipse_patch(scale=dm.x_res, visual_config=ellipse_config)
         ax.add_patch(p)
-        pathpatch_2d_to_3d(p, z=np.max(dm.map), zdir="z")
+        pathpatch_2d_to_3d(p, z=visual_config.z_val, zdir="z")
 
     # Plot the profile if any
     if profile is not None:
@@ -58,7 +60,9 @@ def plot_3D(
             (x2, y2, z2p),
             (x2, y2, z1p),
         ]
-        ax.add_collection3d(Poly3DCollection([points], facecolors="tab:brown", alpha=0.6))
+        ax.add_collection3d(
+            Poly3DCollection([points], facecolors="tab:brown", alpha=0.6)
+        )
 
     ax.set_xlabel(f"X[{dm.sensor.scale}]", fontweight="bold", fontsize=13, labelpad=10)
     ax.set_ylabel(f"Y[{dm.sensor.scale}]", fontweight="bold", fontsize=13, labelpad=10)
@@ -109,13 +113,13 @@ def plot_profile(profile: Profile, block: bool = False) -> None:
     ax.plot(profile.s, profile.h)
     ax.set_ylabel(
         f"Depth ({profile.dm.sensor.scale})",
-        #fontweight="bold",
+        # fontweight="bold",
         labelpad=13,
         fontsize=34,
     )
     ax.set_xlabel(
         f"Distance along D = 2a  ({profile.dm.sensor.scale})",
-        #fontweight="bold",
+        # fontweight="bold",
         labelpad=13,
         fontsize=34,
     )

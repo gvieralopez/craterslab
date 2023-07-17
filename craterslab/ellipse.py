@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import logging
 import math
 
@@ -54,6 +55,14 @@ def fit_elipse(
     return a, b, cx, cy, theta
 
 
+@dataclass
+class EllipseVisualConfig:
+    color: str = "red"
+    fill: bool = False
+    z_val: float = 0
+    alpha: float = 1.
+
+
 class EllipticalModel:
     """
     Computes an ellipse that fits the crater rims on a depth map
@@ -69,6 +78,7 @@ class EllipticalModel:
 
         self.dm = depth_map
         self.points = points
+        self.visual = EllipseVisualConfig(z_val=np.max(depth_map.map))
         self._compute_landmark_points(points)
         if self._validate_landmark_points():
             self._compute_ellipse()
@@ -121,7 +131,6 @@ class EllipticalModel:
 
         return points
 
-
     def _compute_landmarks(
         self, bounds: list[tuple[tuple[int, int], tuple[int, int]]]
     ) -> list[tuple[float, float]]:
@@ -164,13 +173,24 @@ class EllipticalModel:
         xrange, yrange = (0, self.dm.x_count), (0, self.dm.y_count)
         self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y, xrange, yrange)
 
-    def ellipse_patch(self, scale: float = 1.0, color: str | None = None) -> Ellipse:
+    def ellipse_patch(
+        self, scale: float = 1.0, visual_config: EllipseVisualConfig | None = None
+    ) -> Ellipse:
+        visual_config = self.visual if visual_config is None else visual_config
         cx, cy = self.cx, self.cy
         da, db = 2 * self.a, 2 * self.b
         theta_degree = self.theta * 180 / np.pi
         if scale != 1.0:
             cx, cy, da, db = (scale * i for i in [cx, cy, da, db])
-        return Ellipse((cx, cy), da, db, theta_degree, fill=False, color=color)
+        return Ellipse(
+            (cx, cy),
+            da,
+            db,
+            theta_degree,
+            fill=visual_config.fill,
+            color=visual_config.color,
+            alpha=visual_config.alpha
+        )
 
     def max_profile(self) -> Profile:
         bound = self._compute_profile_bounds(self.theta, self.cx, self.cy)
