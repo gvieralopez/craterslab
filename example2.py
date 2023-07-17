@@ -31,4 +31,4 @@ for i in range(1, 30):
 
     plot_3D(depth_map, profile=p, ellipse=em, preview_scale=(1, 1, 4))
     plot_2D(depth_map, profile=p, ellipse=em)
-    plot_profile(p)
+    plot_profile(p, block=True)

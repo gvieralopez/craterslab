@@ -17,6 +17,6 @@ s = Surface(depth_map)
 
 plot_3D(depth_map, profile=s.max_profile, ellipse=s.em, preview_scale=(1, 1, 4))
 plot_2D(depth_map, profile=s.max_profile, ellipse=s.em)
-plot_profile(s.max_profile)
+plot_profile(s.max_profile, block=True)
 
 print(s)
