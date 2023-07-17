@@ -54,6 +54,12 @@ class DepthMap:
     def crop(self, bounding_box: tuple[int, int, int, int], padding: int = 0) -> None:
         self.map = crop_img(self.map, *bounding_box, gap=padding)
 
+    def crop_borders(self, ratio: float):
+        assert ratio > 0 and ratio < 1
+        x0, y0 = self.x_count * ratio / 2, self.y_count * ratio / 2
+        bb = map(int, [x0, y0, self.x_count - 2 * x0, self.y_count - 2 * y0])
+        self.crop(tuple(bb))
+
     def auto_crop(
         self, threshold: float = AUTO_CROP_THRESHOLD, padding: int = AUTO_CROP_PADDING
     ) -> None:
@@ -168,6 +174,4 @@ class DepthMap:
         result = np.zeros_like(matrix)
         np.divide(matrix, point_count, out=result, where=point_count != 0)
 
-
         return gaussian_filter(result, sigma=2)
-
