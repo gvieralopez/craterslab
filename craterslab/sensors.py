@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import scipy.io
+from scipy.ndimage.filters import gaussian_filter
 
 from craterslab.images import compute_bounding_box, crop_img
 
@@ -91,6 +92,24 @@ class DepthMap:
         return cls(content, resolution)
 
     @classmethod
+    def from_xyz_file(
+        cls,
+        file_name: str,
+        data_folder: str = "data",
+        rescaled_with: tuple[float, float, float] | None = None,
+        resolution: SensorResolution = DEFAULT_RESOLUTION,
+    ) -> "DepthMap":
+        # Load cloud point from file
+        content = cls._from_xyz_file(file_name, data_folder)
+
+        if rescaled_with is not None:
+            content = cls._rescale(content, rescaled_with)
+
+        matrix = cls._point_cloud_to_depth_map(content, resolution)
+
+        return cls(matrix, resolution)
+
+    @classmethod
     def from_image_file(cls, image: np.ndarray) -> "DepthMap":
         # Compute depth map from image
         raise NotImplementedError
@@ -111,3 +130,44 @@ class DepthMap:
         # Access the desired variable from the .mat file
         variable_name = variable_name if variable_name else file_name[:-4]
         return mat_contents[variable_name]
+
+    @staticmethod
+    def _from_xyz_file(file_name: str, data_folder: str) -> np.ndarray:
+        file_path = pathlib.Path(data_folder, file_name)
+        return np.loadtxt(file_path, skiprows=2)
+
+    @staticmethod
+    def _rescale(array, scale):
+        for i in range(3):
+            if scale[i] != 1:
+                array *= scale[i]
+        return array
+
+    @staticmethod
+    def _point_cloud_to_depth_map(point_cloud, resolution: SensorResolution):
+        x, y, z = point_cloud.T
+        x_min, x_max = np.min(x), np.max(x)
+        y_min, y_max = np.min(y), np.max(y)
+
+        # Compute target depth map shape
+        cols = int((x_max - x_min) / resolution.x)
+        rows = int((y_max - y_min) / resolution.y)
+        matrix = np.zeros((rows, cols), dtype=np.float64)
+        point_count = np.zeros((rows, cols), dtype=np.int32)
+
+        # Scale the x and y coordinates to fit the matrix
+        _x = np.clip(np.round((x - x_min) / resolution.x).astype(int), 0, cols - 1)
+        _y = np.clip(np.round((y - y_min) / resolution.y).astype(int), 0, rows - 1)
+
+        # Assign the z values to the corresponding matrix elements
+        for xi, yi, zi in zip(_x, _y, z):
+            matrix[yi, xi] += zi
+            point_count[yi, xi] += 1
+
+        # Divide each matrix element by the number of points that were mapped to it
+        result = np.zeros_like(matrix)
+        np.divide(matrix, point_count, out=result, where=point_count != 0)
+
+
+        return gaussian_filter(result, sigma=2)
+
