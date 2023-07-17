@@ -13,6 +13,7 @@ def plot_3D(
     ellipse: EllipticalModel | None = None,
     title: str = "Crater view in 3D",
     preview_scale: tuple[float, float, float] = (1.0, 1.0, 1.0),
+    block: bool = False,
 ) -> None:
     """
     Create a 3D plot of the surface considering the sensor resolution.
@@ -67,7 +68,7 @@ def plot_3D(
     ax.tick_params(axis="z", labelsize=13)
     plt.title(title)
     plt.colorbar(surface, shrink=0.5, aspect=10, orientation="vertical")
-    plt.show(block=False)
+    plt.show(block=block)
 
 
 def plot_2D(
@@ -75,6 +76,7 @@ def plot_2D(
     profile: Profile | None = None,
     ellipse: EllipticalModel | None = None,
     title: str = "Crater view in 2D",
+    block: bool = False,
 ) -> None:
     """
     Create a 2D plot of the surface
@@ -96,10 +98,10 @@ def plot_2D(
     if ellipse is not None:
         ax.add_patch(ellipse.ellipse_patch())
         ax.scatter(*list(zip(*ellipse.landmarks)))
-    plt.show(block=False)
+    plt.show(block=block)
 
 
-def plot_profile(profile: Profile) -> None:
+def plot_profile(profile: Profile, block: bool = False) -> None:
     """
     Create a profile plot
     """
@@ -126,4 +128,4 @@ def plot_profile(profile: Profile) -> None:
     # ax.plot(x_bounds, z_bounds, color="blue", linestyle="--")
 
     ax.grid()
-    plt.show()
+    plt.show(block=block)
