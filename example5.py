@@ -23,20 +23,20 @@ plot_profile(s.max_profile, block=True)
 print(s)
 
 # Obtener los valores de s y h
-s_values = p.s
-h_values = p.h
+# s_values = p.s
+# h_values = p.h
 
-# Crear un DataFrame con los valores de s y h
-data = {'Distancia': s_values, 'Profundidad': h_values}
-df = pd.DataFrame(data)
+# # Crear un DataFrame con los valores de s y h
+# data = {'Distancia': s_values, 'Profundidad': h_values}
+# df = pd.DataFrame(data)
 
-# Especificar el nombre del archivo Excel de salida
-nombre_archivo_excel = 'perfil_profundidad.xlsx'
+# # Especificar el nombre del archivo Excel de salida
+# nombre_archivo_excel = 'perfil_profundidad.xlsx'
 
-# Guardar el DataFrame en el archivo Excel
-df.to_excel(nombre_archivo_excel, index=False)
+# # Guardar el DataFrame en el archivo Excel
+# df.to_excel(nombre_archivo_excel, index=False)
 
-print(f"Los valores se han exportado exitosamente a '{nombre_archivo_excel}'.")
+# print(f"Los valores se han exportado exitosamente a '{nombre_archivo_excel}'.")
 
 
 
