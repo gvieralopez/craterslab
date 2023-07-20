@@ -1,6 +1,6 @@
 from craterslab.ellipse import EllipseVisualConfig
 from craterslab.sensors import DepthMap, SensorResolution
-from craterslab.visuals import plot_2D, plot_3D, plot_profile
+from craterslab.visuals import plot_3D
 from craterslab.craters import Surface
 
 # Define sensor resolution
