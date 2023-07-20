@@ -65,7 +65,7 @@ def regularize(dm: DepthMap) -> DepthMap:
     cropping_coin = random.random()
     if cropping_coin < 0.25:
         dm.crop_borders(ratio=cropping_coin)
-    elif cropping_coin < 0.5:
+    elif cropping_coin < 0.75:
         dm.auto_crop()
     if random.random() > 0.5:
         dm.map = dm.map.T
@@ -80,24 +80,19 @@ for category, details in categories.items():
         dm = load(details["folder"], index, details["load"])
         if details["id"]:
             dm = regularize(dm)
-        img = normalize(dm.map)
+        img = normalize(dm.map, expand=False)
         images.append(img)
         labels.append(details["id"])
 
 # Convert images and labels to numpy arrays
-images = np.array(images)
-labels = np.array(labels)
+images = np.expand_dims(np.array(images), axis=-1)
+labels = to_categorical(np.array(labels), num_classes=NUM_CLASSES)
+
 
 # Split the data into train and test sets
 train_images, test_images, train_labels, test_labels = train_test_split(
     images, labels, test_size=0.2
 )
-
-# Preprocess the data
-train_images = np.expand_dims(train_images, axis=-1)
-test_images = np.expand_dims(test_images, axis=-1)
-train_labels = to_categorical(train_labels, num_classes=NUM_CLASSES)
-test_labels = to_categorical(test_labels, num_classes=NUM_CLASSES)
 
 # Train and save the model
 model = get_untrained_model(lr=LEARNING_RATE)

@@ -49,7 +49,11 @@ def save_trained_model(model):
     model.save(CACHE_PATH)
 
 
-def normalize(img: np.ndarray) -> np.ndarray:
+def normalize(img: np.ndarray, expand=True) -> np.ndarray:
     resized = cv2.resize(img, (IM_SIZE, IM_SIZE), interpolation=cv2.INTER_CUBIC)
     max_val = max(abs(np.max(resized)), abs(np.min(resized)))
-    return resized / max_val
+    result = resized / max_val
+    if expand:
+        return np.expand_dims(result, axis=0)
+    return result
+     

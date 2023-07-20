@@ -52,7 +52,7 @@ class Surface:
 
     def classify(self) -> SurfaceType:
         classifier = get_trained_model()
-        img = np.expand_dims(normalize(self.dm.map), axis=0)
+        img = normalize(self.dm.map)
         class_id = np.argmax(classifier.predict(img))
         return SurfaceType(class_id)
 
