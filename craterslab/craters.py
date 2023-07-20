@@ -1,22 +1,11 @@
 import math
 from dataclasses import dataclass
-from enum import Enum
 
 import numpy as np
 
+from craterslab.classification import SurfaceType, get_trained_model, normalize
 from craterslab.ellipse import EllipticalModel
 from craterslab.sensors import DepthMap
-
-
-class SurfaceType(Enum):
-    SIMPLE_CRATER = 1
-    COMPLEX_CRATER = 2
-    SAND_MOUND = 3
-    UNKNOWN = 4
-
-    def __str__(self):
-        return self.name.replace("_", " ").capitalize()
-
 
 # Groups of surfaces
 CRATER_SURFACES = [SurfaceType.SIMPLE_CRATER, SurfaceType.COMPLEX_CRATER]
@@ -62,8 +51,10 @@ class Surface:
         return f"\nFound: {self.type}\n\n{output}"
 
     def classify(self) -> SurfaceType:
-        # TODO: Update this with a proper classification
-        return SurfaceType.SIMPLE_CRATER
+        classifier = get_trained_model()
+        img = np.expand_dims(normalize(self.dm.map), axis=0)
+        class_id = np.argmax(classifier.predict(img))
+        return SurfaceType(class_id)
 
     def compute_observables(self) -> dict[str, Observable]:
         observables = {}
