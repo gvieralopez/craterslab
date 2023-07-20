@@ -21,7 +21,7 @@ class SurfaceType(Enum):
 
 NUM_CLASSES = len(SurfaceType)
 IM_SIZE = 100
-CACHE_PATH = Path("craterslab", "surface_classifier.keras")
+CACHE_PATH = Path(__file__).parent.resolve() / "surface_classifier.keras"
 
 
 def get_untrained_model(lr=0.001) -> Sequential:
