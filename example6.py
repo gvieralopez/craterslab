@@ -17,7 +17,7 @@ depth_map.auto_crop()
 s = Surface(depth_map)
 
 ellipse_config = EllipseVisualConfig(
-    color="blue", fill=True, z_val=s.observables["mean_h_rim"].value, alpha = 0.5
+    color="blue", fill=True, z_val=s.observables["mean_h_rim"].value, alpha=0.5
 )
 
 plot_3D(

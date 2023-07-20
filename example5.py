@@ -21,5 +21,5 @@ plot_profile(s.max_profile, block=True)
 print(s)
 
 # Create a dictionary with the profile values
-data = {'Distance': p.s, 'Height': p.h}
+data = {"Distance": p.s, "Height": p.h}
 print(data)

@@ -1,6 +1,6 @@
-from dataclasses import dataclass
 import logging
 import math
+from dataclasses import dataclass
 
 import numpy as np
 from matplotlib.patches import Ellipse
@@ -60,7 +60,7 @@ class EllipseVisualConfig:
     color: str = "red"
     fill: bool = False
     z_val: float = 0
-    alpha: float = 1.
+    alpha: float = 1.0
 
 
 class EllipticalModel:
@@ -189,7 +189,7 @@ class EllipticalModel:
             theta_degree,
             fill=visual_config.fill,
             color=visual_config.color,
-            alpha=visual_config.alpha
+            alpha=visual_config.alpha,
         )
 
     def max_profile(self) -> Profile:

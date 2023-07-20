@@ -64,8 +64,21 @@ def plot_3D(
             Poly3DCollection([points], facecolors="tab:brown", alpha=0.6)
         )
 
-    ax.set_xlabel(f"X[{dm.sensor.scale}]", fontweight="bold", fontsize=15, labelpad=10, loc='center')
-    ax.set_ylabel(f"Y[{dm.sensor.scale}]", fontweight="bold", fontsize=15, labelpad=10, rotation=90, loc='center')
+    ax.set_xlabel(
+        f"X[{dm.sensor.scale}]",
+        fontweight="bold",
+        fontsize=15,
+        labelpad=10,
+        loc="center",
+    )
+    ax.set_ylabel(
+        f"Y[{dm.sensor.scale}]",
+        fontweight="bold",
+        fontsize=15,
+        labelpad=10,
+        rotation=90,
+        loc="center",
+    )
     ax.set_zlabel(f"Z[{dm.sensor.scale}]", fontweight="bold", fontsize=15, labelpad=10)
     ax.tick_params(axis="x", labelsize=15)
     ax.tick_params(axis="y", labelsize=15)
