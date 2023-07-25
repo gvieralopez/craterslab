@@ -175,3 +175,22 @@ class DepthMap:
         np.divide(matrix, point_count, out=result, where=point_count != 0)
 
         return gaussian_filter(result, sigma=2)
+
+    def save(self, path: pathlib.Path | str):
+        np.savez(
+            path,
+            depthmap=self.map,
+            xres=self.sensor.x,
+            yres=self.sensor.y,
+            zres=self.sensor.z,
+            scale=self.sensor.scale,
+        )
+
+    @classmethod
+    def load(cls, path: pathlib.Path | str) -> "DepthMap":
+        with np.load(path) as data:
+            sensor = SensorResolution(
+                data["xres"], data["yres"], data["zres"], data["scale"]
+            )
+            dm = data["depthmap"]
+            return DepthMap(dm, sensor)
