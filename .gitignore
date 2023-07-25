@@ -167,3 +167,8 @@ kaggle/
 
 # Our Logs
 logs/
+
+# Data
+.npz
+.mat
+.xyz
