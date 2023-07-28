@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "craterslab"
-version = "0.1.1"
+version = "0.2.0"
 description = ""
 license = "MIT"
 authors = [
@@ -10,7 +10,7 @@ authors = [
 readme = "README.MD"
 homepage = "https://github.com/gvieralopez/craters"
 repository = "https://github.com/gvieralopez/craters"
-documentation = "https://github.com/gvieralopez/craters"
+documentation = "https://craterslab.readthedocs.io/en/latest/"
 keywords = ["craters", "depth maps", "lidar", "impacts"]
 classifiers = [
   "Programming Language :: Python :: 3",
