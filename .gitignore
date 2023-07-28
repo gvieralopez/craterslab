@@ -169,6 +169,7 @@ kaggle/
 logs/
 
 # Data
+examples/data/
 .npz
 .mat
 .xyz
