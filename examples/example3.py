@@ -1,24 +1,27 @@
+# Craterslab Example Script No. 3:
+# Load a cloud point from an xyz file containing the data from the King crater.
+# The crater is then analyzed using craterslab functionalities.
+
 from craterslab.sensors import DepthMap, SensorResolution
 from craterslab.visuals import plot_2D, plot_3D, plot_profile
-from craterslab.ellipse import EllipticalModel
+from craterslab.craters import Surface
 
 # Define sensor resolution
-KINECT_RESOLUTION = SensorResolution(2.8025, 2.8025, 1.0)
+data_resolution = SensorResolution(235.65, 235.65, 1.0, "m")
 
-for i in ["aFig4", "bFig4", "cFig4", "bFig5"]:
-    print(f"Analizing sample {i}")
+# Define data sources
+depth_map = DepthMap.from_xyz_file(
+    "king.xyz", data_folder="examples/data/", resolution=data_resolution
+)
+depth_map.crop_borders(ratio=0.25)
 
-    # Define data sources
-    d0 = DepthMap.from_mat_file(f"plano_{i}.mat", resolution=KINECT_RESOLUTION)
-    df = DepthMap.from_mat_file(f"crater_{i}.mat", resolution=KINECT_RESOLUTION)
+# Create a surface object from the depth map
+s = Surface(depth_map)
 
-    # Compute the difference between the surface before and after the impact
-    depth_map = d0 - df
-    depth_map.auto_crop()
+# Produce the plots
+plot_3D(depth_map, profile=s.max_profile, ellipse=s.em, preview_scale=(1, 1, 5))
+plot_2D(depth_map, profile=s.max_profile, ellipse=s.em)
+plot_profile(s.max_profile, block=True)
 
-    em = EllipticalModel(depth_map, 20)
-    p = em.max_profile()
-
-    plot_3D(depth_map, profile=p, ellipse=em, preview_scale=(1, 1, 4))
-    plot_2D(depth_map, profile=p, ellipse=em)
-    plot_profile(p, block=True)
+# Output the observables computed for the crater
+print(s)

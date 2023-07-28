@@ -1,25 +1,25 @@
-from craterslab.sensors import DepthMap, SensorResolution
-from craterslab.visuals import plot_2D, plot_3D, plot_profile
+# Craterslab Example Script No. 5:
+# Customizing craterslab plots
+
+from craterslab.ellipse import EllipseVisualConfig
+from craterslab.sensors import DepthMap
+from craterslab.visuals import plot_3D
 from craterslab.craters import Surface
 
-# Define sensor resolution
-data_resolution = SensorResolution(235.65, 235.65, 1.0, "m")
 
-# Define data sources
-depth_map = DepthMap.from_xyz_file(
-    "king.xyz", resolution=data_resolution, rescaled_with=(1, 1, 1)
-)
-depth_map.crop_borders(ratio=0.25)
+depth_map = DepthMap.load('examples/data/fluidized_1.npz')
+depth_map.auto_crop()
 
 s = Surface(depth_map)
-p = s.max_profile
 
-plot_3D(depth_map, profile=s.max_profile, ellipse=s.em, preview_scale=(1, 1, 5))
-plot_2D(depth_map, profile=s.max_profile, ellipse=s.em)
-plot_profile(s.max_profile, block=True)
+ellipse_config = EllipseVisualConfig(
+    color="blue", fill=True, z_val=s.observables["mean_h_rim"].value, alpha=0.5
+)
 
-print(s)
-
-# Create a dictionary with the profile values
-data = {"Distance": p.s, "Height": p.h}
-print(data)
+plot_3D(
+    depth_map,
+    ellipse=s.em,
+    preview_scale=(1, 1, 4),
+    ellipse_config=ellipse_config,
+    block=True,
+)
