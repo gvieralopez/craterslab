@@ -27,7 +27,7 @@ Craterslab is also available from pypi. You can install it by running:
 $ pip install craterslab
 ```
 
-We strongly encourage users using this method to create a [virtual enviornment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/).
+We strongly encourage users using this method to create a [virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/) before installing the library.
 
 ## Usage
 
