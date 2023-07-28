@@ -74,7 +74,6 @@ def compute_bounding_box(
     kernel = np.ones((5, 5), np.uint8)
     thresh = cv2.erode(thresh, kernel, iterations=2)
     thresh = cv2.dilate(thresh, kernel, iterations=2)
-    cv2.imshow("dil", thresh)
 
     # Find the contours of the binary image
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
