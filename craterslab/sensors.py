@@ -1,3 +1,4 @@
+import logging
 import pathlib
 from dataclasses import dataclass
 
@@ -120,9 +121,42 @@ class DepthMap:
         # Compute depth map from image
         raise NotImplementedError
 
+    @staticmethod
+    def kinect_driver_available() -> bool:
+        try:
+            from libkinect2 import Kinect2
+            return True
+        except ModuleNotFoundError:
+            logging.error(
+                'Kinect2 driver is not installed, To install it run: pip install https://github.com/sshh12/LibKinect2/releases/download/v0.1.0/libkinect2-0.1.0.tar.gz')
+            return False
+
+    @staticmethod
+    def _get_kinect_depthmap(average_on: int) -> np.ndarray:
+        # Init Kinect2 w/2 sensors
+        from libkinect2 import Kinect2
+        kinect = Kinect2(use_sensors=['depth'])
+        kinect.connect()
+        kinect.wait_for_worker()
+        _, depth_map = next(kinect.iter_frames())
+        if average_on > 1:
+            shape = depth_map.shape[0], depth_map.shape[1], average_on
+            samples = np.zeros(shape, dtype=depth_map.dtype)
+            for i in range(average_on):
+                _, dm = next(kinect.iter_frames())
+                samples[:, :, i] = np.squeeze(dm)
+            depth_map = np.mean(samples, axis=-1)
+        kinect.disconnect()
+
+        return np.squeeze(depth_map)
+
     @classmethod
-    def from_kinect_sensor(cls) -> "DepthMap":
-        # Retrieve depth map from Kinect sensor
+    def from_kinect_sensor(cls, resolution: SensorResolution, average_on: int = 1) -> "DepthMap":
+        # Check if kinect library is installed
+        if cls.kinect_driver_available():
+            _depth_map = cls._get_kinect_depthmap(average_on)
+            return DepthMap(dmap=_depth_map, resolution=resolution)
+
         raise NotImplementedError
 
     @staticmethod
