@@ -1,29 +1,17 @@
-from craterslab.ellipse import EllipseVisualConfig
+# Craterslab Example Script No. 6:
+# Fetching depth maps from kinect sensor
+
 from craterslab.sensors import DepthMap, SensorResolution
 from craterslab.visuals import plot_3D
-from craterslab.craters import Surface
 
-# Define sensor resolution
-KINECT_RESOLUTION = SensorResolution(2.8025, 2.8025, 1.0)
+# Establish sensor resolution obtained expermentally
+resolution = SensorResolution(2.8025, 2.8025, 1.0, 'mm')
 
-# Define data sources
-d0 = DepthMap.from_mat_file("plano_aFig4.mat", resolution=KINECT_RESOLUTION)
-df = DepthMap.from_mat_file("crater_aFig4.mat", resolution=KINECT_RESOLUTION)
+# Ask the kinect sensor for a depth map
+depth_map = DepthMap.from_kinect_sensor(resolution, average_on=500)
 
-# Compute the difference between the surface before and after the impact
-depth_map = d0 - df
-depth_map.auto_crop()
+# Plot the resulting depth map
+plot_3D(depth_map, block=True)
 
-s = Surface(depth_map)
-
-ellipse_config = EllipseVisualConfig(
-    color="blue", fill=True, z_val=s.observables["mean_h_rim"].value, alpha=0.5
-)
-
-plot_3D(
-    depth_map,
-    ellipse=s.em,
-    preview_scale=(1, 1, 4),
-    ellipse_config=ellipse_config,
-    block=True,
-)
+# Save the depth map
+depth_map.save('depthmap_kinect.npz')
