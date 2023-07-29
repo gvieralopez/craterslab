@@ -58,6 +58,7 @@ class Surface:
             class_id = np.argmax(classifier.predict(img))
             return SurfaceType(class_id)
         logging.warning(f"Using default class {SurfaceType(1)}")
+        return SurfaceType(1)
 
     def compute_observables(self) -> dict[str, Observable]:
         observables = {}
