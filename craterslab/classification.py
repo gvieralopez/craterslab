@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 from pathlib import Path
 
@@ -42,7 +43,10 @@ def get_untrained_model(lr=0.001) -> Sequential:
 
 
 def get_trained_model() -> Sequential:
-    return keras.models.load_model(CACHE_PATH)
+    try:
+        return keras.models.load_model(CACHE_PATH)
+    except ValueError:
+        logging.error("Pre-trained classification model could not be loaded")
 
 
 def save_trained_model(model):
@@ -56,4 +60,3 @@ def normalize(img: np.ndarray, expand=True) -> np.ndarray:
     if expand:
         return np.expand_dims(result, axis=0)
     return result
-     

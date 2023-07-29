@@ -1,4 +1,5 @@
 import math
+import logging
 from dataclasses import dataclass
 
 import numpy as np
@@ -52,9 +53,11 @@ class Surface:
 
     def classify(self) -> SurfaceType:
         classifier = get_trained_model()
-        img = normalize(self.dm.map)
-        class_id = np.argmax(classifier.predict(img))
-        return SurfaceType(class_id)
+        if classifier is not None:
+            img = normalize(self.dm.map)
+            class_id = np.argmax(classifier.predict(img))
+            return SurfaceType(class_id)
+        logging.warning(f"Using default class {SurfaceType(1)}")
 
     def compute_observables(self) -> dict[str, Observable]:
         observables = {}
