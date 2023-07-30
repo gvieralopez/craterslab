@@ -1,5 +1,5 @@
-import logging
 import random
+from pathlib import Path
 
 import numpy as np
 from keras.utils import to_categorical
@@ -14,51 +14,35 @@ from craterslab.classification import (
 )
 from craterslab.sensors import DepthMap
 
+
+DATA_PATH = Path("examples/data")
+
 NUM_EPOCHS = 10
 BATCH_SIZE = 1
 LEARNING_RATE = 0.0001
 
-# Define the categories and their corresponding data folders and file indices
+SIMPLE_INDICIES = [1, 2, 3, 4, 5, 6, 7, 8, 26, 27, 28, 32, 35]
+COMPLEX_INDICIES = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+
+# Define the categories and their corresponding file names and ids
 categories = {
     "empty": {
-        "folder": "data/Fluized_sand",
-        "indices": [1, 2, 3, 4, 5, 6, 7, 8, 9],
-        "load": "single",
+        "files": [f'plane_{i}.npz' for i in range(1, 17)],
         "id": 0,
     },
     "simple_craters": {
-        "folder": "data/Fluized_sand",
-        "indices": [1, 2, 3, 4, 5, 6, 7, 8, 26, 27, 28, 32, 35],
-        "load": "differential",
+        "files": [f'fluidized_{i}.npz' for i in SIMPLE_INDICIES],
         "id": 1,
     },
     "complex_craters": {
-        "folder": "data/Fluized_sand",
-        "indices": [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-        + [29, 30, 31, 33, 34, 36, 37],
-        "load": "differential",
+        "files": [f'fluidized_{i}.npz' for i in COMPLEX_INDICIES],
         "id": 2,
     },
     "sand_mounds": {
-        "folder": "data/Compacted_sand",
-        "indices": [1, 2, 3, 4, 5, 6, 7, 8, 9],
-        "load": "differential",
+        "files": [f'compacted_{i}.npz' for i in range(1, 25)],
         "id": 3,
     },
 }
-
-
-def load(folder, index, mode):
-    if mode == "single":
-        depth_map = DepthMap.from_mat_file(f"planoexp{index}.mat", data_folder=folder)
-    elif mode == "differential":
-        d0 = DepthMap.from_mat_file(f"planoexp{index}.mat", data_folder=folder)
-        df = DepthMap.from_mat_file(f"craterexp{index}.mat", data_folder=folder)
-        depth_map = d0 - df
-    else:
-        logging.error(f"Unknown load mode: {mode}")
-
-    return depth_map
 
 
 def regularize(dm: DepthMap) -> DepthMap:
@@ -76,8 +60,9 @@ def regularize(dm: DepthMap) -> DepthMap:
 images = []
 labels = []
 for category, details in categories.items():
-    for index in details["indices"]:
-        dm = load(details["folder"], index, details["load"])
+    for file in details["files"]:
+        path = DATA_PATH / file
+        dm = DepthMap.load(path)
         if details["id"]:
             dm = regularize(dm)
         img = normalize(dm.map, expand=False)
