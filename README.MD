@@ -6,8 +6,18 @@ A library to simplify the analysis of crater data from depth maps.
 
 Craterslab requires Python 3.10+ for functioning. Make sure you have a compliant version of [python](https://www.python.org/downloads/) installed in your system.
 
-### Installing craterslab from the repository using poetry (Recommended)
+### Installing craterslab from pypi using pip (Recommended)
 
+
+Craterslab is also available from pypi. You can install it by running:
+
+```
+$ pip install craterslab
+```
+
+We strongly encourage users using this method to create a [virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/) before installing the library.
+
+### Installing craterslab from the repository using poetry 
 Make sure you have [poetry](https://python-poetry.org/docs/) in your system and then run:
 
 ```
@@ -18,16 +28,6 @@ $ poetry shell
 ```
 
 These will create and activate an isolated virtual environment with craterslab installed on it. 
-
-### Installing craterslab from pypi using pip
-
-Craterslab is also available from pypi. You can install it by running:
-
-```
-$ pip install craterslab
-```
-
-We strongly encourage users using this method to create a [virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/) before installing the library.
 
 ## Usage
 
