@@ -1,54 +1,73 @@
-Analyzing Craters from xyz files
-================================
+Operations with depth maps
+==========================
 
-This examples illustrates how to to analyze a crater surface with craterslab. 
-We will use `this xyz file <https://github.com/gvieralopez/craters/blob/main/data/king.xyz>`_
-with a three dimensional cloud point from `the lunar crater King <https://en.wikipedia.org/wiki/King_(crater)>`_.
+A depth map is a 2D image that contains information about the distance between 
+the camera and the objects in a scene. It represents the spatial layout of a 
+scene in terms of its depth, providing a way to create a 3D representation of 
+the scene. Depth maps can be generated through various techniques, such as 
+stereo imaging, structured light scanning, or time-of-flight measurements.
+In craterslab, depth maps are the core data structure used for the analysis of
+the morphology of surfaces.
 
-The example is structured as follows:
-  | :ref:`Setup dependencies 1`
-  | :ref:`Loading Data 1`
-  | :ref:`Plotting 1`
+This examples illustrates how to retrieve depth maps from different sources. 
+Then, it will guide you through storing and loading already created depth maps.
+Finally, optional pre-processing operations for cropping depth maps are 
+illustrated.
 
-.. note::
-   You can access `the script of this example <https://github.com/gvieralopez/craters/blob/main/example5.py>`_.
+.. _kinect 1:
 
-.. _Setup dependencies 1:
+Capture depth maps from the Kinect sensor
+-----------------------------------------
 
-1. Setup dependencies
----------------------
+Fetching depth maps from the Kinect v2 sensor is directly supported with 
+craterslab. As in any application that required to estimate real world scales
+from images, the first step is to estimate the spacial resolution of the 
+kinect, which directly depends on the distance you are placing it from the 
+scene. So, you will need to estimate how many real world units (e.g., 
+millimeters) are contained on each pixel's heigh and width. In the following
+example, this value was estimated to 2.8025 mm/pixel. In the case of the 
+z axis resolution, the sensor will always deliver a resolution of 1 unit/mm.
 
-Import all the dependencies:
+With all these values, we can create a SensorResolution object, which will 
+define the intrinsic values from the sensor and it will allow the library to 
+map the depth maps into real world units.
+
+Finally, we create the DepthMap object using the from_kinect_sensor method, 
+passing it the aforementioned resolution and, optionally, the number of 
+independent shots to take if we want a depth map averaged over time.
+
+The resulting code would be:
 
 .. code-block:: python
 
    from craterslab.sensors import DepthMap, SensorResolution
-   from craterslab.visuals import plot_2D, plot_3D, plot_profile
-   from craterslab.craters import Surface
+   resolution = SensorResolution(2.8025, 2.8025, 1.0, 'mm')
+   depth_map = DepthMap.from_kinect_sensor(resolution, average_on=500)
 
+.. _cloud points 1:
 
-.. _Loading Data 1:
+Create depth maps from cloud points in .xyz format
+--------------------------------------------------
 
-2. Loading Data
----------------
-
-Since the data is in the form of a cloud point, we need to convert it into a 
-depth map. To do so, we have to map those points into a matrix whose values
+When data is in the form of a cloud point, we need to convert it into a 
+depth map first. To do so, we have to map each points into a matrix whose values
 represent the z value from the points and the indices i,j from the matrix will
 be proportional to their x and y coordinates respectively. So, the x coordinate
 form the points will be determined by i * M while the y coordinate will equal
 j * N, where M and N are the spacial resolution of the depth map on each axis
 respectively.
 
-In craterslab, we can define the desired resolution of the depth map by:
+Similar to the previous example, we can define the desired resolution of the 
+depth map by:
 
 
 .. code-block:: python
 
    data_resolution = SensorResolution(235.65, 235.65, 1.0, "m")
 
-where the last parameters establishes the scale in which all computations will
-be made. Then, the first two parameters define M and N respectively, and can be 
+where the last parameter establishes the scale in which all computations will
+be made and should be chosen accordingly with the original scale from the point
+cloud. Then, the first two parameters define M and N respectively, and can be 
 thought of as the number of units in real scale (meters in this case) between 
 two consecutive pixels from the depth map. The third parameter accounts from the 
 scale in the z axis (how many sensor units equal one real scale unit). 
@@ -58,82 +77,81 @@ Then, we can use this resolution to create a DepthMap as:
 .. code-block:: python
 
    depth_map = DepthMap.from_xyz_file("king.xyz", resolution=data_resolution)
-   depth_map.crop_borders(ratio=0.25)
 
-The last line is optional and it is only meant to remove the borders from the 
-depth map since those do not contain information from the crater in this 
-particular case.
+In the previous example, we are using 
+`this xyz file <https://github.com/gvieralopez/craters-data/blob/main/data/king.xyz>`_.
+with a three dimensional cloud point from `the lunar crater King <https://en.wikipedia.org/wiki/King_(crater)>`_.
 
-Finally, we can create a Surface using a depth map. Surfaces in craterslab are 
-a higher abstraction meant to discern important information from the depth maps.
+.. _load save 1:
 
-.. code-block:: python
+Saving and Loading depth maps in craterslab format
+--------------------------------------------------
 
-   s = Surface(depth_map)
-
-A surface object allows for the classification of eventual craters found in the 
-depth map. Then, for surfaces classified as craters or sand mounds, it is 
-possible to compute an elliptical model that fits the surface, estimates the 
-largest profile across the surface and compute some of its observables. An 
-overview of the analysis conducted over the depth map can be inspected by simply 
-printing the surface object:
+Regardless the method used to acquire a depth map, it is always possible to 
+store it in a file. Craterslab uses numpy's .npz format to store the matrix
+containing the depth map along with the sensor resolution associated.
 
 .. code-block:: python
 
-   print(s)
+   depth_map.save('my_depth_map.npz')
 
-   """
-   Found: Simple crater
-
-   Apparent Depth (d_max): -2280.23 m
-   Eccentricity (epsilon): 0.13 
-   Diameter (D): 78188.58 m
-   Maximum heigh (H_cp): 3063.19 m
-   Mean Heigh over the rim (mean_h_rim): 1350.90 m
-   Concavity Volume (V_in): 5392654283113.74 m³
-   Excavated Volume (V_ex): 4729292363304.89 m³
-   Excess Volume (V_exc): 4664067973505.89 m³
-   """
-
-.. _Plotting 1:
-
-3. Plotting
------------
-
-We can produce different plots from the depth map in order to visualize every
-detail of it. First, we could consider a two dimensional plot where we can 
-optionally include the elliptical model and the largest profile:
+Then, any depth map saved with craters lab can be recovered by:
 
 .. code-block:: python
 
-   plot_2D(depth_map, profile=s.max_profile, ellipse=s.em)
+   depth_map = DepthMap.load('my_depth_map.npz')
 
-.. figure:: /images/king2d.png
-   :alt: Visualizing crater King in 2D
-   :align: center
-   :width: 550
+In `this repository  <https://github.com/gvieralopez/craters-data>`_ there are 
+several depth maps that can be directly imported using craterslab. Those depth 
+maps were captured from granular surfaces where craters are present.
 
-Then, we can produce a similar plot in three dimensions, where we can even scale
-every axis independently in order to emphasize any desired surface 
-characteristic:
+.. _crop 1:
 
+Cropping depth maps
+-------------------
 
-.. code-block:: python
+Very frequently, captured depth maps contain much information outside the region 
+of interest for an specific application. In those cases, craterslab provides
+different methods to crop the depth maps to the desired region.
 
-   plot_3D(depth_map, preview_scale=(1, 1, 5))
-
-.. figure:: /images/king3D.png
-   :alt: Visualizing crater King in 3D
-   :align: center
-   :width: 550
-
-Finally, we can visualize the largest profile from the surface by:
+First, you can manually specify the bounding box (in pixel coordinates) you want 
+to preserve by:
 
 .. code-block:: python
 
-   plot_profile(s.max_profile, block=True)
+   bounding_box = (0, 0, 100, 100) 
+   depth_map.crop(bounding_box)
 
-.. figure:: /images/kingprofile.png
-   :alt: Visualizing crater King's largest profile
-   :align: center
-   :width: 550
+If your depth_map is perfectly centered, but you want to crop the borders, you 
+can use the crop_borders method, specifying a ratio from 0 to 1, where 0 means 
+no cropping and 1 means crop the entire image.
+
+.. code-block:: python
+
+   depth_map.crop_borders(0.5)
+
+Finally, you can let craterslab crop the depth_map for you. It will identify 
+regions of significant variability and keep only them in the resulting depth 
+map:
+
+.. code-block:: python
+
+   depth_map.auto_crop()
+
+
+Subtracting depth maps
+----------------------
+
+In some scenarios it is convenient to store the depth map resulting from the 
+subtraction of two other depth maps taken from the same surface at different
+time instants. For instance, when studying impact craters made under laboratory
+conditions, we can take a depth map from the surface before the impact and 
+another from after the impact. That can be achieved with craters lab by:
+
+.. code-block:: python
+
+   import time
+   d0 = DepthMap.from_kinect_sensor(resolution, average_on=500)
+   time.sleep(60 * 5) # Five minutes break to produce the crater
+   df = DepthMap.from_kinect_sensor(resolution, average_on=500)
+   depth_map = d0 - df
