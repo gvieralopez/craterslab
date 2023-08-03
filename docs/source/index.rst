@@ -24,6 +24,7 @@ describing, classifying and processing surfaces from depth maps.
   
    examples/example1
    examples/example2
+   examples/example3
    examples/example4
 
 
