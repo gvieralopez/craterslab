@@ -129,16 +129,16 @@ def plot_profile(profile: Profile, block: bool = False) -> None:
         f"Depth ({profile.dm.sensor.scale})",
         # fontweight="bold",
         labelpad=13,
-        fontsize=30,
+        fontsize=20,
     )
     ax.set_xlabel(
-        f"Distance along D = 2a  ({profile.dm.sensor.scale})",
+        f"Distance along the segment ({profile.dm.sensor.scale})",
         # fontweight="bold",
         labelpad=13,
-        fontsize=30,
+        fontsize=20,
     )
-    ax.tick_params(axis="x", labelsize=26)
-    ax.tick_params(axis="y", labelsize=26)
+    ax.tick_params(axis="x", labelsize=20)
+    ax.tick_params(axis="y", labelsize=20)
 
     # selected_indices = np.array(profile.key_indexes)
     # ax.scatter(profile.s[selected_indices], profile.h[selected_indices])
