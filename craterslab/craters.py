@@ -50,6 +50,9 @@ class Surface:
     def __repr__(self) -> str:
         output = "\n".join([str(o) for o_id, o in self.observables.items()])
         return f"\nFound: {self.type}\n\n{output}"
+    
+    def set_type(self, surface_type: SurfaceType):
+        self.type = surface_type
 
     def classify(self) -> SurfaceType:
         classifier = get_trained_model()
