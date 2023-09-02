@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, pathpatch_2d_to_3d
@@ -119,7 +120,7 @@ def plot_2D(
     plt.show(block=block)
 
 
-def plot_profile(profile: Profile, block: bool = False) -> None:
+def plot_profile(profile: Profile, draw_slopes: bool = False, block: bool = False) -> None:
     """
     Create a profile plot
     """
@@ -127,23 +128,40 @@ def plot_profile(profile: Profile, block: bool = False) -> None:
     ax.plot(profile.s, profile.h)
     ax.set_ylabel(
         f"Depth ({profile.dm.sensor.scale})",
-        # fontweight="bold",
         labelpad=13,
         fontsize=20,
     )
     ax.set_xlabel(
         f"Distance along the segment ({profile.dm.sensor.scale})",
-        # fontweight="bold",
         labelpad=13,
         fontsize=20,
     )
     ax.tick_params(axis="x", labelsize=20)
     ax.tick_params(axis="y", labelsize=20)
 
-    # selected_indices = np.array(profile.key_indexes)
-    # ax.scatter(profile.s[selected_indices], profile.h[selected_indices])
-    # for x_bounds, z_bounds in profile.walls:
-    # ax.plot(x_bounds, z_bounds, color="blue", linestyle="--")
-
+    if draw_slopes:
+        key_indices = [profile.t1, profile.t2, profile.b1, profile.b2]
+        if all(key_indices):
+            profile.slopes()
+            selected_indices = np.array(key_indices)
+            ax.scatter(profile.s[selected_indices], profile.h[selected_indices])
+            for i, line in enumerate([profile.l1, profile.l2]):
+                line_model = np.poly1d(line)
+                i0, i1 = (profile.t1, profile.b1) if i == 0 else (profile.t2, profile.b2)
+                x_bounds, z_bounds = slope_bounds(profile, line_model, i0, i1)
+                ax.plot(x_bounds, z_bounds, color="blue", linestyle="--")
+        else:
+            logging.error("Attempt to draw profile slopes failed."
+                          "Make sure you are using the depth map from a crater")
     ax.grid()
     plt.show(block=block)
+
+
+def slope_bounds(profile: Profile, line_model: np.poly1d, index_0: int, index_1: int) -> tuple[tuple[float,float], tuple[float,float]]:
+    x = [profile.s[index_0], profile.s[index_1]]
+    if line_model:
+        z = [line_model(v) for v in x]
+    else:
+        z = x
+        logging.error("Slopes are invalid")
+    return x, z
