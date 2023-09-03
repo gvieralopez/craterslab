@@ -6,8 +6,7 @@ from craterslab.visuals import plot_2D, plot_3D, plot_profile
 from craterslab.ellipse import EllipticalModel
 
 
-# depth_map = DepthMap.load('examples/data/fluidized_1.npz')
-depth_map = DepthMap.load('examples/fluidized_1.npz')
+depth_map = DepthMap.load('examples/data/fluidized_1.npz')
 depth_map.auto_crop()
 
 em = EllipticalModel(depth_map, 20)
