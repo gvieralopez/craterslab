@@ -34,6 +34,9 @@ class Surface:
         self.em = EllipticalModel(depth_map, ellipse_points)
         self.max_profile = self.em.max_profile()
         self.type = self.classify()
+
+        if self.type == SurfaceType.COMPLEX_CRATER:
+            self.inner_ellipse = EllipticalModel(depth_map, ellipse_points, inner=True)
         self.available_observables = {
             "d_max": {"func": self.d_max, "compute_for": ALL_KNOWN_SURFACES},
             "epsilon": {"func": self.epsilon, "compute_for": CRATER_SURFACES},
@@ -50,7 +53,7 @@ class Surface:
     def __repr__(self) -> str:
         output = "\n".join([str(o) for o_id, o in self.observables.items()])
         return f"\nFound: {self.type}\n\n{output}"
-    
+
     def set_type(self, surface_type: SurfaceType):
         self.type = surface_type
 
@@ -96,6 +99,21 @@ class Surface:
     def _ellipse_content(self) -> np.ndarray[bool]:
         return np.transpose(self._ellipse() <= 1)
 
+    def _inner_z_values(self) -> np.array:
+        a, b, cx, cy, _ = self.inner_ellipse.params()
+        M, N = self.dm.map.shape
+        x_indices, y_indices = np.meshgrid(np.arange(N), np.arange(M))
+
+        # Translate the grid coordinates to the ellipse center
+        x_indices -= int(cx)
+        y_indices -= int(cy)
+
+        # Compute the ellipse equation: (x/a)^2 + (y/b)^2 <= 1
+        ellipse_mask = (x_indices**2 / a**2) + (y_indices**2 / b**2) <= 1
+
+        # Extract the points inside the ellipse from the ndarray
+        return self.dm.map[ellipse_mask]
+
     def _h_rim(self):
         return self.dm.map[self._ellipse_perimeter()] * self.dm.z_res
 
@@ -107,6 +125,11 @@ class Surface:
         inner_values = self.dm.map[self._ellipse_content()] - h_min
         positive_sum = np.sum(inner_values[inner_values <= h_max - h_min])
         return positive_sum * self.dm.x_res * self.dm.y_res
+
+    def _H_cp(self) -> float:
+        points_inside_ellipse = self._inner_z_values()
+        max_val = np.max(points_inside_ellipse) * self.dm.z_res
+        return max_val - self._d_max()
 
     def _V_ex(self) -> float:
         inner_values = self.dm.map[self._ellipse_content()]
@@ -130,7 +153,7 @@ class Surface:
         return Observable("Diameter", "D", val, units)
 
     def H_cp(self) -> Observable:
-        val = -1  # TODO: Compute
+        val = self._H_cp()
         units = self.dm.sensor.scale
         return Observable("Heigh of central peak", "H_cp", val, units)
 
