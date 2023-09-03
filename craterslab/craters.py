@@ -47,6 +47,7 @@ class Surface:
             "V_in": {"func": self.V_in, "compute_for": CRATER_SURFACES},
             "V_ex": {"func": self.V_ex, "compute_for": CRATER_SURFACES},
             "V_exc": {"func": self.V_exc, "compute_for": ALL_KNOWN_SURFACES},
+            "V_cp": {"func": self.V_cp, "compute_for": [SurfaceType.COMPLEX_CRATER]},
         }
         self.observables = self.compute_observables()
 
@@ -124,12 +125,18 @@ class Surface:
         h_max, h_min = self._mean_h_rim(), self._d_max()
         inner_values = self.dm.map[self._ellipse_content()] - h_min
         positive_sum = np.sum(inner_values[inner_values <= h_max - h_min])
-        return positive_sum * self.dm.x_res * self.dm.y_res
+        return positive_sum * self.dm.x_res * self.dm.y_res 
 
     def _H_cp(self) -> float:
         points_inside_ellipse = self._inner_z_values()
         max_val = np.max(points_inside_ellipse) * self.dm.z_res
         return max_val - self._d_max()
+    
+    def _V_cp(self) -> float:
+        points_inside_ellipse = self._inner_z_values() * self.dm.z_res
+        points_inside_ellipse -=  np.min(points_inside_ellipse)
+        total_sum = np.sum(points_inside_ellipse)
+        return total_sum * self.dm.x_res * self.dm.y_res   
 
     def _V_ex(self) -> float:
         inner_values = self.dm.map[self._ellipse_content()]
@@ -151,6 +158,11 @@ class Surface:
         val = self.em.a * 2 * self.dm.x_res
         units = self.dm.sensor.scale
         return Observable("Diameter", "D", val, units)
+
+    def V_cp(self) -> Observable:
+        val = self._V_cp()
+        units = f"{self.dm.sensor.scale}³"
+        return Observable("Volume of central peak", "V_cp", val, units)
 
     def H_cp(self) -> Observable:
         val = self._H_cp()
