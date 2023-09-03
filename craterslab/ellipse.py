@@ -68,7 +68,7 @@ class EllipticalModel:
     Computes an ellipse that fits the crater rims on a depth map
     """
 
-    def __init__(self, depth_map: DepthMap, points: int) -> None:
+    def __init__(self, depth_map: DepthMap, points: int, inner: bool = False) -> None:
         if not points % 2 == 0:
             raise ValueError("The value of points needs to be even")
         if points < MIN_REQ_POINTS:
@@ -79,13 +79,13 @@ class EllipticalModel:
         self.dm = depth_map
         self.points = points
         self.visual = EllipseVisualConfig(z_val=np.max(depth_map.map))
-        self._compute_landmark_points(points)
+        self._compute_landmark_points(points, inner)
         if self._validate_landmark_points():
             self._compute_ellipse()
 
-    def _compute_landmark_points(self, points: int) -> None:
+    def _compute_landmark_points(self, points: int, inner) -> None:
         bounds = self._compute_bounds(points)
-        self.landmarks = self._compute_landmarks(bounds)
+        self.landmarks = self._compute_landmarks(bounds, inner)
 
     def _compute_bounds(
         self, points: int
@@ -132,21 +132,22 @@ class EllipticalModel:
         return points
 
     def _compute_landmarks(
-        self, bounds: list[tuple[tuple[int, int], tuple[int, int]]]
+        self, bounds: list[tuple[tuple[int, int], tuple[int, int]]], inner: bool
     ) -> list[tuple[float, float]]:
         landmarks = []
         for bound in bounds:
-            landmarks += self._compute_complementary_landmarks(bound)
+            landmarks += self._compute_complementary_landmarks(bound, inner)
         return landmarks
 
     def _compute_complementary_landmarks(
-        self, bound: tuple[tuple[int, int], tuple[int, int]]
+        self, bound: tuple[tuple[int, int], tuple[int, int]], inner: bool
     ) -> list[tuple[float, float]]:
         p = Profile(self.dm, bound[0], bound[1])
         # TODO: Improve this with a better way to get the extreme values
         p.compute_extrema()
+        key_vals = [p.b1, p.b2] if inner else [p.t1, p.t2]
         lm = []
-        for i in [p.t1, p.t2]:
+        for i in key_vals:
             if i == -1:
                 logging.error("Cannot compute a landmark")
                 continue
