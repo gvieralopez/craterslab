@@ -35,8 +35,6 @@ class Surface:
         self.max_profile = self.em.max_profile()
         self.type = self.classify()
 
-        if self.type == SurfaceType.COMPLEX_CRATER:
-            self.inner_ellipse = EllipticalModel(depth_map, ellipse_points, inner=True)
         self.available_observables = {
             "d_max": {"func": self.d_max, "compute_for": ALL_KNOWN_SURFACES},
             "epsilon": {"func": self.epsilon, "compute_for": CRATER_SURFACES},
@@ -49,6 +47,12 @@ class Surface:
             "V_exc": {"func": self.V_exc, "compute_for": ALL_KNOWN_SURFACES},
             "V_cp": {"func": self.V_cp, "compute_for": [SurfaceType.COMPLEX_CRATER]},
         }
+
+        self.init_observables()
+
+    def init_observables(self):
+        if self.type == SurfaceType.COMPLEX_CRATER:
+            self.inner_ellipse = EllipticalModel(self.dm, self.em.points, inner=True)
         self.observables = self.compute_observables()
 
     def __repr__(self) -> str:
@@ -57,6 +61,7 @@ class Surface:
 
     def set_type(self, surface_type: SurfaceType):
         self.type = surface_type
+        self.init_observables()
 
     def classify(self) -> SurfaceType:
         classifier = get_trained_model()
