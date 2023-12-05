@@ -37,6 +37,7 @@ class Surface:
 
         self.available_observables = {
             "d_max": {"func": self.d_max, "compute_for": ALL_KNOWN_SURFACES},
+            "d_exc": {"func": self.d_exc, "compute_for": ALL_KNOWN_SURFACES},
             "epsilon": {"func": self.epsilon, "compute_for": CRATER_SURFACES},
             "D": {"func": self.D, "compute_for": CRATER_SURFACES},
             "H_cp": {"func": self.H_cp, "compute_for": [SurfaceType.COMPLEX_CRATER]},
@@ -79,7 +80,7 @@ class Surface:
                 observables[o_id] = details["func"]()
         return observables
 
-    def _d_max(self) -> float:
+    def _d_exc(self) -> float:
         return np.min(self.dm.map) * self.dm.z_res
 
     def _H_max(self) -> float:
@@ -127,7 +128,7 @@ class Surface:
         return np.mean(self._h_rim())
 
     def _V_in(self) -> float:
-        h_max, h_min = self._mean_h_rim(), self._d_max()
+        h_max, h_min = self._mean_h_rim(), self._d_exc()
         inner_values = self.dm.map[self._ellipse_content()] - h_min
         positive_sum = np.sum(inner_values[inner_values <= h_max - h_min])
         return positive_sum * self.dm.x_res * self.dm.y_res 
@@ -135,7 +136,7 @@ class Surface:
     def _H_cp(self) -> float:
         points_inside_ellipse = self._inner_z_values()
         max_val = np.max(points_inside_ellipse) * self.dm.z_res
-        return max_val - self._d_max()
+        return max_val - self._d_exc()
     
     def _V_cp(self) -> float:
         points_inside_ellipse = self._inner_z_values() * self.dm.z_res
@@ -149,9 +150,14 @@ class Surface:
         return negative_sum * self.dm.x_res * self.dm.y_res
 
     def d_max(self) -> Observable:
-        val = self._d_max()
+        val = abs(self._d_exc()) + abs(self._mean_h_rim())
         units = self.dm.sensor.scale
         return Observable("Apparent Depth", "d_max", val, units)
+    
+    def d_exc(self) -> Observable:
+        val = self._d_exc()
+        units = self.dm.sensor.scale
+        return Observable("Max Excavated Depth", "d_exc", val, units)
 
     def epsilon(self) -> Observable:
         a, b = self.em.a, self.em.b
