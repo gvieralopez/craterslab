@@ -104,10 +104,14 @@ class DepthMap:
         file_name: str,
         data_folder: str = "data",
         rescaled_with: tuple[float, float, float] | None = None,
+        z_shift: int | float = 0,
         resolution: SensorResolution = DEFAULT_RESOLUTION,
     ) -> "DepthMap":
         # Load cloud point from file
         content = cls._from_xyz_file(file_name, data_folder)
+
+        if z_shift != 0:
+            content[:, 2] += z_shift
 
         if rescaled_with is not None:
             content = cls._rescale(content, rescaled_with)

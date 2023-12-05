@@ -11,7 +11,7 @@ data_resolution = SensorResolution(235.65, 235.65, 1.0, "m")
 
 # Define data sources
 depth_map = DepthMap.from_xyz_file(
-    "king.xyz", data_folder="examples/data/", resolution=data_resolution
+    "king.xyz", data_folder="examples/data/", resolution=data_resolution, z_shift=-1445
 )
 depth_map.crop_borders(ratio=0.25)
 
