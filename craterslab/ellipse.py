@@ -187,7 +187,7 @@ class EllipticalModel:
             (cx, cy),
             da,
             db,
-            theta_degree,
+            angle=theta_degree,
             fill=visual_config.fill,
             color=visual_config.color,
             alpha=visual_config.alpha,

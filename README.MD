@@ -52,3 +52,14 @@ $ python example1.py
 
 See [software documentation](https://craterslab.readthedocs.io/en/latest/) for more details.
 
+## Troubleshooting
+
+### Error running the examples
+
+If you get a warning as such
+
+```
+UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+```
+
+You may need to install tk on your operative system.

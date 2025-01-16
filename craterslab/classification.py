@@ -5,10 +5,7 @@ from pathlib import Path
 import cv2
 import keras
 import numpy as np
-from keras.layers import Conv2D, Dense, Flatten, MaxPooling2D
-from keras.models import Sequential
-from keras.optimizers import Adam
-
+import keras
 
 class SurfaceType(Enum):
     UNKNOWN = 0
@@ -22,35 +19,43 @@ class SurfaceType(Enum):
 
 NUM_CLASSES = len(SurfaceType)
 IM_SIZE = 100
-CACHE_PATH = Path(__file__).parent.resolve() / "surface_classifier.keras"
+CACHE_PATH = str(Path(__file__).parent.resolve() / "craterslab.weights.h5")
 
 
-def get_untrained_model(lr=0.001) -> Sequential:
+def get_raw_model() -> keras.Sequential:
     # Build a CNN
-    model = Sequential()
-    model.add(Conv2D(32, (3, 3), activation="relu", input_shape=(IM_SIZE, IM_SIZE, 1)))
-    model.add(MaxPooling2D((2, 2)))
-    model.add(Conv2D(64, (3, 3), activation="relu"))
-    model.add(MaxPooling2D((2, 2)))
-    model.add(Flatten())
-    model.add(Dense(64, activation="relu"))
-    model.add(Dense(NUM_CLASSES, activation="softmax"))
+    model = keras.Sequential()
+    model.add(
+        keras.layers.Conv2D(
+            32, (3, 3), activation="relu", input_shape=(IM_SIZE, IM_SIZE, 1)
+        )
+    )
+    model.add(keras.layers.MaxPooling2D((2, 2)))
+    model.add(keras.layers.Conv2D(64, (3, 3), activation="relu"))
+    model.add(keras.layers.MaxPooling2D((2, 2)))
+    model.add(keras.layers.Flatten())
+    model.add(keras.layers.Dense(64, activation="relu"))
+    model.add(keras.layers.Dense(NUM_CLASSES, activation="softmax"))
+    return model
 
-    # Compile the model
-    opt = Adam(lr=lr)
+def get_untrained_model(lr=0.001) -> keras.Sequential:
+    model = get_raw_model()
+    opt = keras.optimizers.Adam(learning_rate=lr)
     model.compile(optimizer=opt, loss="binary_crossentropy", metrics=["accuracy"])
     return model
 
 
-def get_trained_model() -> Sequential:
+def get_trained_model() -> keras.Sequential:
     try:
-        return keras.models.load_model(CACHE_PATH)
+        model = get_untrained_model()
+        model.load_weights(CACHE_PATH)
+        return model
     except ValueError:
         logging.error("Pre-trained classification model could not be loaded")
 
 
 def save_trained_model(model):
-    model.save(CACHE_PATH)
+    model.save_weights(CACHE_PATH)
 
 
 def normalize(img: np.ndarray, expand=True) -> np.ndarray:
