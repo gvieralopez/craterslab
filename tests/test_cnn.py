@@ -19,7 +19,7 @@ from craterslab.cnn import (
     save_trained_model,
 )
 from craterslab.craters import Surface
-from craterslab.sensors import DepthMap
+from craterslab.depth_map import DepthMap
 
 
 @pytest.fixture(scope="module")

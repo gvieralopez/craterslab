@@ -7,9 +7,9 @@ import numpy as np
 from matplotlib.patches import Ellipse
 from scipy.optimize import Bounds, minimize
 
+from craterslab.depth_map import DepthMap
 from craterslab.landmarks import find_landmarks
 from craterslab.profiles import Profile
-from craterslab.sensors import DepthMap
 
 logger = logging.getLogger(__name__)
 

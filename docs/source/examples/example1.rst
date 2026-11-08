@@ -32,7 +32,7 @@ With all these values, we can create a SensorResolution object, which will
 define the intrinsic values from the sensor and it will allow the library to 
 map the depth maps into real world units.
 
-Finally, we create the DepthMap object using the from_kinect_sensor method, 
+Finally, we create the DepthMap object using the capture_kinect function, 
 passing it the aforementioned resolution and, optionally, the number of 
 independent shots to take if we want a depth map averaged over time.
 
@@ -40,9 +40,22 @@ The resulting code would be:
 
 .. code-block:: python
 
-   from craterslab.sensors import DepthMap, SensorResolution
+   from craterslab.depth_map import SensorResolution
+   from craterslab.sensors import capture_kinect
    resolution = SensorResolution(2.8025, 2.8025, 1.0, 'mm')
-   depth_map = DepthMap.from_kinect_sensor(resolution, average_on=500)
+   depth_map = capture_kinect(resolution, average_on=500)
+
+Capture depth maps from the Femto Bolt sensor
+---------------------------------------------
+
+The Orbbec Femto Bolt needs its Python SDK (``pip install pyorbbecsdk2``). As 
+with the Kinect, frames are averaged over the valid pixels only. Recalibrate the
+resolution experimentally before using its measurements for science:
+
+.. code-block:: python
+
+   from craterslab.sensors import capture_femto_bolt
+   depth_map = capture_femto_bolt(resolution, average_on=500, timeout_ms=1000)
 
 .. _cloud points 1:
 
@@ -76,7 +89,8 @@ Then, we can use this resolution to create a DepthMap as:
 
 .. code-block:: python
 
-   depth_map = DepthMap.from_xyz_file("king.xyz", resolution=data_resolution)
+   from craterslab.readers import read_xyz
+   depth_map = read_xyz("king.xyz", data_resolution)
 
 In the previous example, we are using 
 `this xyz file <https://github.com/gvieralopez/craters-data/blob/main/data/king.xyz>`_.
@@ -151,7 +165,7 @@ another from after the impact. That can be achieved with craters lab by:
 .. code-block:: python
 
    import time
-   d0 = DepthMap.from_kinect_sensor(resolution, average_on=500)
+   d0 = capture_kinect(resolution, average_on=500)
    time.sleep(60 * 5) # Five minutes break to produce the crater
-   df = DepthMap.from_kinect_sensor(resolution, average_on=500)
+   df = capture_kinect(resolution, average_on=500)
    depth_map = d0 - df

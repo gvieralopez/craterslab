@@ -12,7 +12,7 @@ which can be directly loaded with craterslab as:
 
 .. code-block:: python
 
-   from craterslab.sensors import DepthMap
+   from craterslab.depth_map import DepthMap
    depth_map = DepthMap.load("fluidized_1.npz")
    depth_map.auto_crop()
 

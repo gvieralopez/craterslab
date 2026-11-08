@@ -135,7 +135,7 @@ warn_return_any = true
 extra_checks = true
 
 [[tool.mypy.overrides]]
-module = ["keras.*", "libkinect2", "mpl_toolkits.*", "scipy.*", "sklearn.*"]
+module = ["keras.*", "libkinect2", "mpl_toolkits.*", "pyorbbecsdk2", "scipy.*", "sklearn.*"]
 ignore_missing_imports = true
 
 

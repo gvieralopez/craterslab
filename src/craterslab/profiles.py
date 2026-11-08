@@ -3,7 +3,7 @@ import math
 import numpy as np
 import scipy
 
-from craterslab.sensors import DepthMap
+from craterslab.depth_map import DepthMap
 
 
 class Profile:

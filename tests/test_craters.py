@@ -7,8 +7,8 @@ import pytest
 from craterslab import craters
 from craterslab.classification import SurfaceType
 from craterslab.craters import Observable, Surface
+from craterslab.depth_map import DepthMap, SensorResolution
 from craterslab.ellipse import EllipseFit, EllipticalModel
-from craterslab.sensors import DepthMap, SensorResolution
 
 COMMON = {"d_max", "d_exc", "H_m", "V_exc"}
 CRATER = COMMON | {"epsilon", "D", "mean_h_rim", "V_in", "V_ex"}

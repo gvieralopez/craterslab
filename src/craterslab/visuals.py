@@ -4,10 +4,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, pathpatch_2d_to_3d
 
+from craterslab.depth_map import DepthMap
 from craterslab.ellipse import EllipseVisualConfig, EllipticalModel
 from craterslab.landmarks import find_landmarks, wall_lines
 from craterslab.profiles import Profile
-from craterslab.sensors import DepthMap
 
 logger = logging.getLogger(__name__)
 

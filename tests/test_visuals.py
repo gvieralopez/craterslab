@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 from matplotlib import pyplot as plt
 
+from craterslab.depth_map import DepthMap, SensorResolution
 from craterslab.ellipse import EllipseVisualConfig, EllipticalModel
 from craterslab.profiles import Profile
-from craterslab.sensors import DepthMap, SensorResolution
 from craterslab.visuals import plot_2D, plot_3D, plot_profile, slope_bounds
 
 

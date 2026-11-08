@@ -1,160 +1,175 @@
-from pathlib import Path
+import sys
+from collections.abc import Iterator
+from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
 import pytest
-import scipy.io
 
-from craterslab.sensors import DepthMap, SensorResolution
-
-
-def test_resolution_rejects_unknown_scale() -> None:
-    with pytest.raises(ValueError, match="scale"):
-        SensorResolution(1.0, 1.0, 1.0, "inch")
+from craterslab.depth_map import SensorResolution
+from craterslab.sensors import average_valid_frames, capture_femto_bolt, capture_kinect
 
 
-def test_resolution_xyz() -> None:
-    assert SensorResolution(1.0, 2.0, 3.0, "cm").xyz() == (1.0, 2.0, 3.0)
+def test_average_ignores_invalid_pixels() -> None:
+    frames = [np.array([[2.0, 0.0]]), np.array([[4.0, 6.0]])]
+    assert average_valid_frames(frames).tolist() == [[3.0, 6.0]]
 
 
-def test_counts_follow_numpy_axes(resolution: SensorResolution) -> None:
-    dm = DepthMap(np.zeros((3, 5)), resolution)
-    assert (dm.x_count, dm.y_count) == (5, 3)
+def test_average_keeps_zero_where_a_pixel_is_never_valid() -> None:
+    assert average_valid_frames([np.zeros((1, 2)), np.zeros((1, 2))]).tolist() == [[0.0, 0.0]]
 
 
-def test_subtract(resolution: SensorResolution) -> None:
-    result = DepthMap(np.full((2, 2), 3.0), resolution) - DepthMap(np.ones((2, 2)), resolution)
-    assert np.array_equal(result.map, np.full((2, 2), 2.0))
+def test_average_accepts_integer_frames() -> None:
+    frames = [np.array([[1, 2]], dtype=np.uint16), np.array([[2, 2]], dtype=np.uint16)]
+    assert average_valid_frames(frames).tolist() == [[1.5, 2.0]]
 
 
-def test_subtract_rejects_other_types(resolution: SensorResolution) -> None:
-    with pytest.raises(TypeError):
-        _ = DepthMap(np.ones((2, 2)), resolution) - 1  # type: ignore[operator]
+def test_average_needs_frames() -> None:
+    with pytest.raises(ValueError, match="no depth frames"):
+        average_valid_frames([])
 
 
-def test_subtract_rejects_other_shapes(resolution: SensorResolution) -> None:
-    with pytest.raises(ValueError, match="same shape"):
-        _ = DepthMap(np.ones((2, 2)), resolution) - DepthMap(np.ones((3, 3)), resolution)
+class _Kinect:
+    disconnected = False
+
+    def __init__(self, use_sensors: list[str]) -> None:
+        self.frames = iter(
+            [np.array([[[2.0], [0.0]], [[1.0], [1.0]]]), np.array([[[4.0], [6.0]], [[3.0], [1.0]]])]
+        )
+
+    def connect(self) -> None: ...
+
+    def wait_for_worker(self) -> None: ...
+
+    def iter_frames(self) -> Iterator[tuple[None, np.ndarray]]:
+        yield None, next(self.frames)
+
+    def disconnect(self) -> None:
+        _Kinect.disconnected = True
 
 
-def test_subtract_rejects_other_resolutions(resolution: SensorResolution) -> None:
-    other = SensorResolution(2.0, 2.0, 2.0)
-    with pytest.raises(ValueError, match="same resolution"):
-        _ = DepthMap(np.ones((2, 2)), resolution) - DepthMap(np.ones((2, 2)), other)
+def test_kinect_averages_valid_pixels(
+    monkeypatch: pytest.MonkeyPatch, resolution: SensorResolution
+) -> None:
+    monkeypatch.setitem(sys.modules, "libkinect2", SimpleNamespace(Kinect2=_Kinect))
+    depth_map = capture_kinect(resolution, average_on=2)
+    assert depth_map.map.tolist() == [[3.0, 6.0], [2.0, 1.0]]
+    assert depth_map.sensor is resolution
+    assert _Kinect.disconnected
 
 
-def test_crop_with_padding(resolution: SensorResolution) -> None:
-    dm = DepthMap(np.zeros((20, 20)), resolution)
-    dm.crop((5, 5, 4, 3), padding=1)
-    assert dm.map.shape == (5, 6)
+def test_kinect_without_its_driver_says_what_to_install(
+    monkeypatch: pytest.MonkeyPatch, resolution: SensorResolution
+) -> None:
+    monkeypatch.setitem(sys.modules, "libkinect2", None)
+    with pytest.raises(ImportError, match="LibKinect2"):
+        capture_kinect(resolution, average_on=1)
 
 
-def test_crop_borders(resolution: SensorResolution) -> None:
-    dm = DepthMap(np.zeros((100, 100)), resolution)
-    dm.crop_borders(0.5)
-    assert dm.map.shape == (50, 50)
+class _FemtoFrame:
+    def __init__(self, values: list[int], **scale: Any) -> None:
+        self.values = np.array(values, dtype=np.uint16)
+        for name, value in scale.items():
+            setattr(self, name, lambda value=value: value)
+
+    def get_data(self) -> bytes:
+        return self.values.tobytes()
+
+    def get_height(self) -> int:
+        return 1
+
+    def get_width(self) -> int:
+        return len(self.values)
 
 
-@pytest.mark.parametrize("ratio", [0, 1, -0.5, 1.5])
-def test_crop_borders_rejects_bad_ratios(resolution: SensorResolution, ratio: float) -> None:
-    with pytest.raises(ValueError, match="ratio"):
-        DepthMap(np.zeros((10, 10)), resolution).crop_borders(ratio)
+class _FemtoPipeline:
+    def __init__(self, frames: list[Any]) -> None:
+        self.frames = iter(frames)
+        self.started = self.stopped = False
+        self.timeouts: list[int] = []
+
+    def get_stream_profile_list(self, sensor: str) -> SimpleNamespace:
+        return SimpleNamespace(get_default_video_stream_profile=lambda: f"profile of {sensor}")
+
+    def start(self, config: SimpleNamespace) -> None:
+        self.started = config.stream == "profile of depth"
+
+    def wait_for_frames(self, timeout_ms: int) -> Any:
+        self.timeouts.append(timeout_ms)
+        return next(self.frames)
+
+    def stop(self) -> None:
+        self.stopped = True
 
 
-def test_auto_crop_keeps_the_crater(crater: DepthMap) -> None:
-    before = crater.map.shape
-    crater.auto_crop()
-    assert crater.map.shape[0] <= before[0]
-    assert crater.map.min() == pytest.approx(-8.0, abs=0.1)
-
-
-def test_from_image_file_is_not_available(resolution: SensorResolution) -> None:
-    with pytest.raises(NotImplementedError):
-        DepthMap.from_image_file(np.zeros((2, 2)))
-
-
-def test_kinect_without_driver(resolution: SensorResolution) -> None:
-    assert DepthMap.kinect_driver_available() is False
-    with pytest.raises(NotImplementedError):
-        DepthMap.from_kinect_sensor(resolution)
-
-
-def _write_mat(folder: Path) -> np.ndarray:
-    samples = np.arange(16, dtype=float).reshape((2, 2, 1, 4))
-    scipy.io.savemat(folder / "scan.mat", {"scan": samples, "other": samples * 2})
-    return samples
-
-
-def test_from_mat_file_averages_the_samples(tmp_path: Path) -> None:
-    samples = _write_mat(tmp_path)
-    dm = DepthMap.from_mat_file("scan.mat", data_folder=str(tmp_path))
-    assert np.array_equal(dm.map, samples.mean(axis=-1).squeeze())
-
-
-def test_from_mat_file_limits_the_samples(tmp_path: Path) -> None:
-    samples = _write_mat(tmp_path)
-    dm = DepthMap.from_mat_file("scan.mat", data_folder=str(tmp_path), max_samples=2)
-    assert np.array_equal(dm.map, samples[:, :, :, :2].mean(axis=-1).squeeze())
-
-
-def test_from_mat_file_without_averaging(tmp_path: Path) -> None:
-    samples = _write_mat(tmp_path)
-    dm = DepthMap.from_mat_file(
-        "scan.mat", data_folder=str(tmp_path), average=False, variable_name="other"
+def _install_femto(monkeypatch: pytest.MonkeyPatch, frames: list[Any]) -> _FemtoPipeline:
+    pipeline = _FemtoPipeline(frames)
+    config = SimpleNamespace(stream=None)
+    config.enable_stream = lambda profile: setattr(config, "stream", profile)
+    sdk = SimpleNamespace(
+        Pipeline=lambda: pipeline,
+        Config=lambda: config,
+        OBSensorType=SimpleNamespace(DEPTH_SENSOR="depth"),
     )
-    assert np.array_equal(dm.map, samples * 2)
+    monkeypatch.setitem(sys.modules, "pyorbbecsdk2", sdk)
+    return pipeline
 
 
-def _write_xyz(folder: Path) -> None:
-    rows = [f"{x} {y} 5.0" for x in range(20) for y in range(10)]
-    (folder / "cloud.xyz").write_text("\n".join(["header", "header", *rows]), encoding="utf-8")
+def _frame_set(depth_frame: Any) -> SimpleNamespace:
+    return SimpleNamespace(get_depth_frame=lambda: depth_frame)
 
 
-def test_from_xyz_file_grids_the_points(tmp_path: Path) -> None:
-    _write_xyz(tmp_path)
-    dm = DepthMap.from_xyz_file("cloud.xyz", data_folder=str(tmp_path))
-    assert dm.map.shape == (9, 19)
+def test_femto_scales_and_averages_valid_pixels(
+    monkeypatch: pytest.MonkeyPatch, resolution: SensorResolution
+) -> None:
+    frames = [
+        _frame_set(_FemtoFrame([2, 0], get_depth_scale=0.5)),
+        _frame_set(_FemtoFrame([4, 6], get_depth_scale=0.5)),
+    ]
+    pipeline = _install_femto(monkeypatch, frames)
+    depth_map = capture_femto_bolt(resolution, average_on=2, timeout_ms=100)
+    assert depth_map.map.tolist() == [[1.5, 3.0]]
+    assert pipeline.started
+    assert pipeline.stopped
+    assert pipeline.timeouts == [100, 100]
 
 
-def test_from_xyz_file_shifts_z(tmp_path: Path) -> None:
-    _write_xyz(tmp_path)
-    plain = DepthMap.from_xyz_file("cloud.xyz", data_folder=str(tmp_path))
-    shifted = DepthMap.from_xyz_file(
-        "cloud.xyz", data_folder=str(tmp_path), z_shift=2, rescaled_with=(1.0, 1.0, 1.0)
-    )
-    assert shifted.map.mean() > plain.map.mean()
+def test_femto_supports_the_older_scale_name(
+    monkeypatch: pytest.MonkeyPatch, resolution: SensorResolution
+) -> None:
+    _install_femto(monkeypatch, [_frame_set(_FemtoFrame([4], get_value_scale=0.25))])
+    assert capture_femto_bolt(resolution, 1, 100).map.tolist() == [[1.0]]
 
 
-def test_from_xyz_file_rescales_each_axis(tmp_path: Path) -> None:
-    _write_xyz(tmp_path)
-    dm = DepthMap.from_xyz_file(
-        "cloud.xyz", data_folder=str(tmp_path), rescaled_with=(2.0, 1.0, 1.0)
-    )
-    assert dm.map.shape == (9, 38)
+def test_femto_skips_missing_frames(
+    monkeypatch: pytest.MonkeyPatch, resolution: SensorResolution
+) -> None:
+    frames = [None, _frame_set(None), _frame_set(_FemtoFrame([8], get_depth_scale=1.0))]
+    _install_femto(monkeypatch, frames)
+    assert capture_femto_bolt(resolution, 1, 100).map.tolist() == [[8.0]]
 
 
-def test_rescale_touches_one_axis_at_a_time() -> None:
-    result = DepthMap._rescale(np.array([[1.0, 2.0, 3.0]]), (2.0, 3.0, 4.0))
-    assert result.tolist() == [[2.0, 6.0, 12.0]]
+def test_femto_gives_up_when_no_frames_arrive(
+    monkeypatch: pytest.MonkeyPatch, resolution: SensorResolution
+) -> None:
+    pipeline = _install_femto(monkeypatch, [None] * 10)
+    with pytest.raises(TimeoutError, match="0 of 1"):
+        capture_femto_bolt(resolution, 1, 100)
+    assert pipeline.stopped
 
 
-def test_heights_use_the_z_resolution() -> None:
-    dm = DepthMap(np.array([[2.0, -4.0]]), SensorResolution(1.0, 1.0, 0.5))
-    assert dm.heights.tolist() == [[1.0, -2.0]]
+def test_femto_stops_the_pipeline_after_an_error(
+    monkeypatch: pytest.MonkeyPatch, resolution: SensorResolution
+) -> None:
+    pipeline = _install_femto(monkeypatch, [])
+    with pytest.raises(StopIteration):
+        capture_femto_bolt(resolution, 1, 100)
+    assert pipeline.stopped
 
 
-def test_auto_crop_keeps_a_surface_with_nothing_central(resolution: SensorResolution) -> None:
-    surface = np.zeros((100, 100), dtype=np.float32)
-    surface[2:14, 2:14] = 5
-    dm = DepthMap(surface, resolution)
-    dm.auto_crop()
-    assert dm.map.shape == (100, 100)
-
-
-def test_save_and_load(tmp_path: Path) -> None:
-    original = DepthMap(np.arange(6.0).reshape(2, 3), SensorResolution(1.0, 2.0, 3.0, "cm"))
-    path = tmp_path / "map.npz"
-    original.save(path)
-    loaded = DepthMap.load(path)
-    assert np.array_equal(loaded.map, original.map)
-    assert loaded.sensor.xyz() == (1.0, 2.0, 3.0)
-    assert loaded.sensor.scale == "cm"
+def test_femto_without_its_sdk_says_what_to_install(
+    monkeypatch: pytest.MonkeyPatch, resolution: SensorResolution
+) -> None:
+    monkeypatch.setitem(sys.modules, "pyorbbecsdk2", None)
+    with pytest.raises(ImportError, match="pip install pyorbbecsdk2"):
+        capture_femto_bolt(resolution, 1, 100)

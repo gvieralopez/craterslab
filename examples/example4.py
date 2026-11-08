@@ -3,7 +3,7 @@
 
 from craterslab.cnn import CNNClassifier
 from craterslab.craters import Surface
-from craterslab.sensors import DepthMap
+from craterslab.depth_map import DepthMap
 
 classifier = CNNClassifier()
 diameters = []

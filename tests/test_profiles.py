@@ -3,8 +3,8 @@ import math
 import numpy as np
 import pytest
 
+from craterslab.depth_map import DepthMap, SensorResolution
 from craterslab.profiles import Profile
-from craterslab.sensors import DepthMap, SensorResolution
 
 
 @pytest.fixture

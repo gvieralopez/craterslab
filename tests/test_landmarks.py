@@ -3,9 +3,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
+from craterslab.depth_map import DepthMap, SensorResolution
 from craterslab.landmarks import ProfileLandmarks, find_landmarks, wall_lines, wall_slopes
 from craterslab.profiles import Profile
-from craterslab.sensors import DepthMap, SensorResolution
 
 
 def _profile(values: np.ndarray, resolution: SensorResolution) -> Profile:

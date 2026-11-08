@@ -4,16 +4,15 @@
 
 from craterslab.cnn import CNNClassifier
 from craterslab.craters import Surface
-from craterslab.sensors import DepthMap, SensorResolution
+from craterslab.depth_map import SensorResolution
+from craterslab.readers import read_xyz
 from craterslab.visuals import plot_2D, plot_3D, plot_profile
 
 # Define sensor resolution
 data_resolution = SensorResolution(235.65, 235.65, 1.0, "m")
 
 # Define data sources
-depth_map = DepthMap.from_xyz_file(
-    "king.xyz", data_folder="examples/data/", resolution=data_resolution, z_shift=-1445
-)
+depth_map = read_xyz("examples/data/king.xyz", data_resolution, z_shift=-1445)
 depth_map.crop_borders(ratio=0.25)
 
 # Create a surface object from the depth map and classify it

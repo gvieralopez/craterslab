@@ -3,8 +3,8 @@ import logging
 import numpy as np
 import pytest
 
+from craterslab.depth_map import DepthMap, SensorResolution
 from craterslab.ellipse import EllipseFit, EllipseVisualConfig, EllipticalModel, fit_elipse
-from craterslab.sensors import DepthMap, SensorResolution
 
 
 def _ellipse_points(a: float, b: float, cx: float, cy: float) -> tuple[np.ndarray, np.ndarray]:

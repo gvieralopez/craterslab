@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from matplotlib import pyplot as plt
 
-from craterslab.sensors import DepthMap, SensorResolution
+from craterslab.depth_map import DepthMap, SensorResolution
 
 mpl.use("Agg")
 

@@ -15,7 +15,7 @@ from craterslab.cnn import (
     normalize,
     save_trained_model,
 )
-from craterslab.sensors import DepthMap
+from craterslab.depth_map import DepthMap
 
 DATA_PATH = Path("examples/data")
 

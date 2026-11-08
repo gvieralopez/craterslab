@@ -6,9 +6,9 @@ import pytest
 
 from craterslab.classification import SurfaceType
 from craterslab.craters import OBSERVABLES, Surface
+from craterslab.depth_map import DepthMap
 from craterslab.export import write_observables_csv, write_profile_csv
 from craterslab.profiles import Profile
-from craterslab.sensors import DepthMap
 
 
 def _rows(path: Path) -> list[dict[str, str]]:

@@ -3,7 +3,7 @@
 
 from craterslab.classification import SurfaceType
 from craterslab.craters import Surface
-from craterslab.sensors import DepthMap
+from craterslab.depth_map import DepthMap
 
 depth_map = DepthMap.load("examples/data/fluidized_1.npz")
 depth_map.auto_crop()

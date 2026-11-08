@@ -7,9 +7,9 @@ from typing import Any
 import numpy as np
 
 from craterslab.classification import Classifier, SurfaceType
+from craterslab.depth_map import DepthMap
 from craterslab.ellipse import EllipseFit, EllipticalModel
 from craterslab.profiles import Profile
-from craterslab.sensors import DepthMap
 
 # Groups of surfaces
 COMPLEX_SURFACES = (SurfaceType.COMPLEX_CRATER,)
