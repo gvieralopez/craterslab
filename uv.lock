@@ -577,7 +577,7 @@ wheels = [
 
 [[package]]
 name = "craterslab"
-version = "0.2.9b0"
+version = "0.2.9"
 source = { editable = "." }
 dependencies = [
     { name = "keras" },
