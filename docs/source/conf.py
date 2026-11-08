@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath("../../src/craterslab/"))
 project = "craterslab"
 copyright = "2023, Gustavo Viera-López"
 author = "Gustavo Viera-López, Frank Corrales Machín"
-release = "0.2.11-beta0"
+release = "0.3.0-beta0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

@@ -1,3 +1,4 @@
+import importlib.util
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from craterslab.sensors import DepthMap, SensorResolution
 mpl.use("Agg")
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+# TensorFlow has no wheels for the newest Python versions
+collect_ignore = [] if importlib.util.find_spec("keras") else ["test_cnn.py"]
 
 
 @pytest.fixture(autouse=True)

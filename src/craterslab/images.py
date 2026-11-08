@@ -1,16 +1,11 @@
-from collections.abc import Sequence
-
-import cv2
 import numpy as np
-from cv2.typing import MatLike
+from scipy import ndimage
 from scipy.spatial import distance
 
 MAX_CENTER_DISTANCE = 0.5
-
-
-def largest_bounding_box(img: np.ndarray) -> tuple[int, int, int, int]:
-    h, w = img.shape
-    return 0, 0, w, h
+OPENING_SIZE = 5
+OPENING_ITERATIONS = 2
+EIGHT_CONNECTED = np.ones((3, 3), dtype=bool)
 
 
 def crop_img(img: np.ndarray, x: int, y: int, w: int, h: int, gap: int) -> np.ndarray:
@@ -25,68 +20,47 @@ def crop_img(img: np.ndarray, x: int, y: int, w: int, h: int, gap: int) -> np.nd
     return img[y0:ym, x0:xm]
 
 
-def select_best_countour(img: np.ndarray, contours: Sequence[MatLike]) -> np.ndarray | None:
-    # find center of image and draw it (blue circle)
-    image_center = tuple((np.asarray(img.shape) / 2).astype("int32"))
-
-    max_distance = distance.euclidean(image_center, img.shape)
-    valid_contours = []
-    for contour in contours:
-        # find center of each contour
-        moments = cv2.moments(contour)
-        if moments["m00"] != 0:
-            center_x = int(moments["m10"] / moments["m00"])
-            center_y = int(moments["m01"] / moments["m00"])
-            contour_center = (center_x, center_y)
-
-            # calculate distance to image_center
-            distances_to_center = (distance.euclidean(image_center, contour_center)) / max_distance
-
-            # save to a list of dictionaries
-            valid_contours.append(
-                {
-                    "contour": contour,
-                    "center": contour_center,
-                    "distance_to_center": distances_to_center,
-                }
-            )
-
-    central_contours = [
-        c["contour"] for c in valid_contours if c["distance_to_center"] < MAX_CENTER_DISTANCE
-    ]
-
-    if not central_contours:
-        return None
-
-    # Concatenate all contours
-    return np.concatenate(central_contours)
-
-
 def compute_bounding_box(img: np.ndarray, threshold: float) -> tuple[int, int, int, int]:
     """
     Compute the bounding box of an image for the region in which pixels are
     |p| > threshold
     """
-    # Threshold the image
-    _, thresh1 = cv2.threshold(img, -threshold, 255, cv2.THRESH_BINARY_INV)
-    _, thresh2 = cv2.threshold(img, threshold, 255, cv2.THRESH_BINARY)
-    thresh1, thresh2 = thresh1.astype(np.uint8), thresh2.astype(np.uint8)
-    thresh = cv2.bitwise_or(thresh1, thresh2)
-
-    # Open the image
-    kernel = np.ones((5, 5), np.uint8)
-    thresh = cv2.erode(thresh, kernel, iterations=2)
-    thresh = cv2.dilate(thresh, kernel, iterations=2)
-
-    # Find the contours of the binary image
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Find the contour with the largest area
-    best_countour = select_best_countour(img, contours)
-    if best_countour is None:
+    rows, cols = np.nonzero(central_regions(*outer_regions(img, threshold)))
+    if rows.size == 0:
         # Nothing stands out near the center, so keep the whole image
         return largest_bounding_box(img)
 
-    # Find the bounding rectangle of the largest contour
-    x, y, w, h = cv2.boundingRect(best_countour)
-    return x, y, w, h
+    x, y = int(cols.min()), int(rows.min())
+    return x, y, int(cols.max()) - x + 1, int(rows.max()) - y + 1
+
+
+def outer_regions(img: np.ndarray, threshold: float) -> tuple[np.ndarray, int]:
+    mask = (img <= -threshold) | (img > threshold)
+
+    # Pixels beyond the border count as set while eroding, so that regions
+    # touching the border are not worn away by it
+    kernel = np.ones((OPENING_SIZE, OPENING_SIZE), dtype=bool)
+    mask = ndimage.binary_erosion(mask, kernel, iterations=OPENING_ITERATIONS, border_value=1)
+    mask = ndimage.binary_dilation(mask, kernel, iterations=OPENING_ITERATIONS)
+
+    # Holes, and anything inside them, belong to the region around them
+    regions, count = ndimage.label(ndimage.binary_fill_holes(mask), structure=EIGHT_CONNECTED)
+    return regions, int(count)
+
+
+def central_regions(regions: np.ndarray, count: int) -> np.ndarray:
+    image_center = tuple((np.asarray(regions.shape) / 2).astype("int32"))
+    max_distance = distance.euclidean(image_center, regions.shape)
+    central = np.zeros(regions.shape, dtype=bool)
+    for label in range(1, count + 1):
+        region = regions == label
+        row, col = ndimage.center_of_mass(region)
+        distance_to_center = distance.euclidean(image_center, (int(col), int(row))) / max_distance
+        if distance_to_center < MAX_CENTER_DISTANCE:
+            central |= region
+    return central
+
+
+def largest_bounding_box(img: np.ndarray) -> tuple[int, int, int, int]:
+    h, w = img.shape
+    return 0, 0, w, h

@@ -24,6 +24,7 @@ Import all the dependencies:
 
    from craterslab.sensors import DepthMap, SensorResolution
    from craterslab.visuals import plot_2D, plot_3D, plot_profile
+   from craterslab.cnn import CNNClassifier
    from craterslab.craters import Surface
 
 
@@ -69,7 +70,8 @@ a higher abstraction meant to discern important information from the depth maps.
 
 .. code-block:: python
 
-   s = Surface(depth_map)
+   s = Surface.from_depth_map(depth_map)
+   s.classify(CNNClassifier())
 
 A surface object allows for the classification of eventual craters found in the 
 depth map. Then, for surfaces classified as craters or sand mounds, it is 
