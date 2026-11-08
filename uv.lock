@@ -577,7 +577,7 @@ wheels = [
 
 [[package]]
 name = "craterslab"
-version = "1.0.0b0"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "matplotlib" },
