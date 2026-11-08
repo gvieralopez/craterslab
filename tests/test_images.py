@@ -28,5 +28,11 @@ def test_compute_bounding_box_joins_central_blobs_and_skips_far_ones() -> None:
     assert (x, y, x + w, y + h) == (40, 40, 64, 64)
 
 
+def test_compute_bounding_box_with_only_far_blobs_returns_the_whole_image() -> None:
+    img = np.zeros((100, 100), dtype=np.float32)
+    img[2:14, 2:14] = 5
+    assert compute_bounding_box(img, threshold=1.5) == (0, 0, 100, 100)
+
+
 def test_compute_bounding_box_without_contours_returns_the_whole_image() -> None:
     assert compute_bounding_box(np.zeros((8, 6), dtype=np.float32), threshold=1.5) == (0, 0, 6, 8)

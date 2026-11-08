@@ -142,6 +142,14 @@ def test_heights_use_the_z_resolution() -> None:
     assert dm.heights.tolist() == [[1.0, -2.0]]
 
 
+def test_auto_crop_keeps_a_surface_with_nothing_central(resolution: SensorResolution) -> None:
+    surface = np.zeros((100, 100), dtype=np.float32)
+    surface[2:14, 2:14] = 5
+    dm = DepthMap(surface, resolution)
+    dm.auto_crop()
+    assert dm.map.shape == (100, 100)
+
+
 def test_save_and_load(tmp_path: Path) -> None:
     original = DepthMap(np.arange(6.0).reshape(2, 3), SensorResolution(1.0, 2.0, 3.0, "cm"))
     path = tmp_path / "map.npz"

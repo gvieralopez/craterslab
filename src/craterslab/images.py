@@ -25,7 +25,7 @@ def crop_img(img: np.ndarray, x: int, y: int, w: int, h: int, gap: int) -> np.nd
     return img[y0:ym, x0:xm]
 
 
-def select_best_countour(img: np.ndarray, contours: Sequence[MatLike]) -> np.ndarray:
+def select_best_countour(img: np.ndarray, contours: Sequence[MatLike]) -> np.ndarray | None:
     # find center of image and draw it (blue circle)
     image_center = tuple((np.asarray(img.shape) / 2).astype("int32"))
 
@@ -55,6 +55,9 @@ def select_best_countour(img: np.ndarray, contours: Sequence[MatLike]) -> np.nda
         c["contour"] for c in valid_contours if c["distance_to_center"] < MAX_CENTER_DISTANCE
     ]
 
+    if not central_contours:
+        return None
+
     # Concatenate all contours
     return np.concatenate(central_contours)
 
@@ -79,13 +82,11 @@ def compute_bounding_box(img: np.ndarray, threshold: float) -> tuple[int, int, i
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Find the contour with the largest area
-    if len(contours):
-        if len(contours) == 1:
-            best_countour = contours[0]
-        best_countour = select_best_countour(img, contours)
+    best_countour = select_best_countour(img, contours)
+    if best_countour is None:
+        # Nothing stands out near the center, so keep the whole image
+        return largest_bounding_box(img)
 
-        # Find the bounding rectangle of the largest contour
-        x, y, w, h = cv2.boundingRect(best_countour)
-        return x, y, w, h
-    # Return the whole image bounding rectangle
-    return largest_bounding_box(img)
+    # Find the bounding rectangle of the largest contour
+    x, y, w, h = cv2.boundingRect(best_countour)
+    return x, y, w, h
