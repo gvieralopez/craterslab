@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, pathpatch_2d_to_3d
 
 from craterslab.ellipse import EllipseVisualConfig, EllipticalModel
+from craterslab.landmarks import find_landmarks, wall_lines
 from craterslab.profiles import Profile
 from craterslab.sensors import DepthMap
 
@@ -126,15 +127,13 @@ def plot_profile(profile: Profile, draw_slopes: bool = False, block: bool = Fals
     ax.tick_params(axis="y", labelsize=20)
 
     if draw_slopes:
-        key_indices = [profile.t1, profile.t2, profile.b1, profile.b2]
-        if all(key_indices):
-            profile.slopes()
-            selected_indices = np.array(key_indices)
+        landmarks = find_landmarks(profile)
+        if landmarks.is_complete():
+            walls = landmarks.walls()
+            selected_indices = np.array(walls).flatten()
             ax.scatter(profile.s[selected_indices], profile.h[selected_indices])
-            for i, line in enumerate([profile.l1, profile.l2]):
-                line_model = np.poly1d(line)
-                i0, i1 = (profile.t1, profile.b1) if i == 0 else (profile.t2, profile.b2)
-                x_bounds, z_bounds = slope_bounds(profile, line_model, i0, i1)
+            for (i0, i1), line in zip(walls, wall_lines(profile, landmarks), strict=True):
+                x_bounds, z_bounds = slope_bounds(profile, np.poly1d(line), i0, i1)
                 ax.plot(x_bounds, z_bounds, color="blue", linestyle="--")
         else:
             logger.error(

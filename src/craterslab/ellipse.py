@@ -7,6 +7,7 @@ import numpy as np
 from matplotlib.patches import Ellipse
 from scipy.optimize import Bounds, minimize
 
+from craterslab.landmarks import find_landmarks
 from craterslab.profiles import Profile
 from craterslab.sensors import DepthMap
 
@@ -155,11 +156,11 @@ class EllipticalModel:
 
     def _compute_complementary_landmarks(self, bound: Sequence[Point], inner: bool) -> list[Point]:
         p = Profile(self.dm, bound[0], bound[1])
-        p.compute_extrema()
-        key_vals = [p.b1, p.b2] if inner else [p.t1, p.t2]
+        found = find_landmarks(p)
+        key_vals = [found.b1, found.b2] if inner else [found.t1, found.t2]
         lm = []
         for i in key_vals:
-            if i == -1:
+            if i is None:
                 logger.error("Cannot compute a landmark")
                 continue
             x, y, _ = p._index2xyz(i)
