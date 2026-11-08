@@ -124,6 +124,11 @@ def test_from_xyz_file_shifts_z(tmp_path: Path) -> None:
     assert shifted.map.mean() > plain.map.mean()
 
 
+def test_heights_use_the_z_resolution() -> None:
+    dm = DepthMap(np.array([[2.0, -4.0]]), SensorResolution(1.0, 1.0, 0.5))
+    assert dm.heights.tolist() == [[1.0, -2.0]]
+
+
 def test_save_and_load(tmp_path: Path) -> None:
     original = DepthMap(np.arange(6.0).reshape(2, 3), SensorResolution(1.0, 2.0, 3.0, "cm"))
     path = tmp_path / "map.npz"

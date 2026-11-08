@@ -72,6 +72,11 @@ class DepthMap:
         self.crop(bb, padding)
 
     @property
+    def heights(self) -> np.ndarray:
+        """The depth map on the real-world z scale."""
+        return self.map * self.z_res
+
+    @property
     def x_count(self) -> int:
         return int(self.map.shape[1])
 
