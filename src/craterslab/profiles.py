@@ -70,7 +70,7 @@ class Profile:
 
     @property
     def z_bounds(self) -> tuple[float, float]:
-        return (min(self.h) * self.h_res, max(self.h) * self.h_res)
+        return (min(self.h), max(self.h))
 
     @property
     def ang(self) -> float:
