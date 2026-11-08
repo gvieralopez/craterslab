@@ -11,7 +11,7 @@ from craterslab.readers import read_mat, read_xyz
 from craterslab.sensors import average_valid_frames, capture_femto_bolt, capture_kinect
 from craterslab.visuals import plot_2D, plot_3D, plot_profile
 
-__version__ = "1.0.0"
+__version__ = "1.0.1-beta0"
 
 __all__ = [
     "Classifier",

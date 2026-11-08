@@ -1,6 +1,6 @@
 [project]
 name = "craterslab"
-version = "1.0.0"
+version = "1.0.1-beta0"
 description = "A library to simplify the analysis of crater data from depth maps."
 readme = "README.md"
 requires-python = ">=3.11"
