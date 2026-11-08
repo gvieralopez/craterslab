@@ -6,6 +6,8 @@ import cv2
 import keras
 import numpy as np
 
+logger = logging.getLogger(__name__)
+
 
 class SurfaceType(Enum):
     UNKNOWN = 0
@@ -13,7 +15,7 @@ class SurfaceType(Enum):
     COMPLEX_CRATER = 2
     SAND_MOUND = 3
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name.replace("_", " ").capitalize()
 
 
@@ -35,27 +37,28 @@ def get_raw_model() -> keras.Sequential:
     return model
 
 
-def get_untrained_model(lr=0.001) -> keras.Sequential:
+def get_untrained_model(lr: float = 0.001) -> keras.Sequential:
     model = get_raw_model()
     opt = keras.optimizers.Adam(learning_rate=lr)
     model.compile(optimizer=opt, loss="binary_crossentropy", metrics=["accuracy"])
     return model
 
 
-def get_trained_model() -> keras.Sequential:
+def get_trained_model() -> keras.Sequential | None:
     try:
         model = get_untrained_model()
         model.load_weights(CACHE_PATH)
         return model
     except ValueError:
-        logging.error("Pre-trained classification model could not be loaded")
+        logger.error("Pre-trained classification model could not be loaded")
+        return None
 
 
-def save_trained_model(model):
+def save_trained_model(model: keras.Sequential) -> None:
     model.save_weights(CACHE_PATH)
 
 
-def normalize(img: np.ndarray, expand=True) -> np.ndarray:
+def normalize(img: np.ndarray, expand: bool = True) -> np.ndarray:
     resized = cv2.resize(img, (IM_SIZE, IM_SIZE), interpolation=cv2.INTER_CUBIC)
     max_val = max(abs(np.max(resized)), abs(np.min(resized)))
     result = resized / max_val

@@ -1,5 +1,6 @@
 import logging
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -9,7 +10,11 @@ from scipy.optimize import Bounds, minimize
 from craterslab.profiles import Profile
 from craterslab.sensors import DepthMap
 
+logger = logging.getLogger(__name__)
+
 MIN_REQ_POINTS = 4
+
+Point = tuple[float, float]
 
 
 def fit_elipse(
@@ -78,11 +83,11 @@ class EllipticalModel:
         if self._validate_landmark_points():
             self._compute_ellipse()
 
-    def _compute_landmark_points(self, points: int, inner) -> None:
+    def _compute_landmark_points(self, points: int, inner: bool) -> None:
         bounds = self._compute_bounds(points)
         self.landmarks = self._compute_landmarks(bounds, inner)
 
-    def _compute_bounds(self, points: int) -> list[tuple[tuple[int, int], tuple[int, int]]]:
+    def _compute_bounds(self, points: int) -> list[Sequence[Point]]:
         center_y, center_x = self.dm.y_count // 2, self.dm.x_count // 2
         angle_diff = 2 * np.pi / points
         return [
@@ -91,8 +96,8 @@ class EllipticalModel:
         ]
 
     def _compute_profile_bounds(
-        self, angle: float, center_x: int, center_y: int
-    ) -> tuple[tuple[int, int], tuple[int, int]]:
+        self, angle: float, center_x: float, center_y: float
+    ) -> Sequence[Point]:
         # Calculate the slope and y-intercept of the line
         m = np.tan(angle)
         n = center_y - m * center_x
@@ -124,42 +129,37 @@ class EllipticalModel:
 
         return points
 
-    def _compute_landmarks(
-        self, bounds: list[tuple[tuple[int, int], tuple[int, int]]], inner: bool
-    ) -> list[tuple[float, float]]:
+    def _compute_landmarks(self, bounds: list[Sequence[Point]], inner: bool) -> list[Point]:
         landmarks = []
         for bound in bounds:
             landmarks += self._compute_complementary_landmarks(bound, inner)
         return landmarks
 
-    def _compute_complementary_landmarks(
-        self, bound: tuple[tuple[int, int], tuple[int, int]], inner: bool
-    ) -> list[tuple[float, float]]:
+    def _compute_complementary_landmarks(self, bound: Sequence[Point], inner: bool) -> list[Point]:
         p = Profile(self.dm, bound[0], bound[1])
-        # TODO: Improve this with a better way to get the extreme values
         p.compute_extrema()
         key_vals = [p.b1, p.b2] if inner else [p.t1, p.t2]
         lm = []
         for i in key_vals:
             if i == -1:
-                logging.error("Cannot compute a landmark")
+                logger.error("Cannot compute a landmark")
                 continue
-            x, y, z = p._index2xyz(i)
+            x, y, _ = p._index2xyz(i)
             lm.append((x, y))
         return lm
 
     def _validate_landmark_points(self) -> bool:
         if len(self.landmarks) < self.points:
-            logging.warning(f"Only {len(self.landmarks)}/{self.points} landmarks were computed")
+            logger.warning("Only %d/%d landmarks were computed", len(self.landmarks), self.points)
             if len(self.landmarks) < MIN_REQ_POINTS:
-                logging.error("Not sufficient landmarks for fitting the elliptical model")
+                logger.error("Not sufficient landmarks for fitting the elliptical model")
                 return False
             else:
-                logging.warning("Trying to fit the elliptical model anyways")
+                logger.warning("Trying to fit the elliptical model anyways")
         return True
 
     def _compute_ellipse(self) -> None:
-        x, y = map(np.array, zip(*self.landmarks))
+        x, y = map(np.array, zip(*self.landmarks, strict=True))
         xrange, yrange = (0, self.dm.x_count), (0, self.dm.y_count)
         self.a, self.b, self.cx, self.cy, self.theta = fit_elipse(x, y, xrange, yrange)
 

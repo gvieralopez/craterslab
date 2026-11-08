@@ -1,6 +1,11 @@
+from collections.abc import Sequence
+
 import cv2
 import numpy as np
+from cv2.typing import MatLike
 from scipy.spatial import distance
+
+MAX_CENTER_DISTANCE = 0.5
 
 
 def largest_bounding_box(img: np.ndarray) -> tuple[int, int, int, int]:
@@ -20,20 +25,19 @@ def crop_img(img: np.ndarray, x: int, y: int, w: int, h: int, gap: int) -> np.nd
     return img[y0:ym, x0:xm]
 
 
-def select_best_countour(img: np.ndarray, contours: np.ndarray) -> np.ndarray:
+def select_best_countour(img: np.ndarray, contours: Sequence[MatLike]) -> np.ndarray:
     # find center of image and draw it (blue circle)
-    image_center = np.asarray(img.shape) / 2
-    image_center = tuple(image_center.astype("int32"))
+    image_center = tuple((np.asarray(img.shape) / 2).astype("int32"))
 
     max_distance = distance.euclidean(image_center, img.shape)
     valid_contours = []
     for contour in contours:
         # find center of each contour
-        M = cv2.moments(contour)
-        if M["m00"] != 0:
-            center_X = int(M["m10"] / M["m00"])
-            center_Y = int(M["m01"] / M["m00"])
-            contour_center = (center_X, center_Y)
+        moments = cv2.moments(contour)
+        if moments["m00"] != 0:
+            center_x = int(moments["m10"] / moments["m00"])
+            center_y = int(moments["m01"] / moments["m00"])
+            contour_center = (center_x, center_y)
 
             # calculate distance to image_center
             distances_to_center = (distance.euclidean(image_center, contour_center)) / max_distance
@@ -47,7 +51,9 @@ def select_best_countour(img: np.ndarray, contours: np.ndarray) -> np.ndarray:
                 }
             )
 
-    central_contours = [c["contour"] for c in valid_contours if c["distance_to_center"] < 0.5]
+    central_contours = [
+        c["contour"] for c in valid_contours if c["distance_to_center"] < MAX_CENTER_DISTANCE
+    ]
 
     # Concatenate all contours
     return np.concatenate(central_contours)
@@ -79,6 +85,7 @@ def compute_bounding_box(img: np.ndarray, threshold: float) -> tuple[int, int, i
         best_countour = select_best_countour(img, contours)
 
         # Find the bounding rectangle of the largest contour
-        return cv2.boundingRect(best_countour)
+        x, y, w, h = cv2.boundingRect(best_countour)
+        return x, y, w, h
     # Return the whole image bounding rectangle
     return largest_bounding_box(img)

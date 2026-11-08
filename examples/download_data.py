@@ -16,7 +16,7 @@ headers = {"Accept": "application/vnd.github.v3+json"}
 script_path = Path(__file__).resolve().parent
 
 # Send the API request and get the zip file contents
-response = requests.get(url, headers=headers)
+response = requests.get(url, headers=headers, timeout=60)
 zip_file = zipfile.ZipFile(io.BytesIO(response.content))
 
 # Create a temporary directory for extracting the contents of the zip file

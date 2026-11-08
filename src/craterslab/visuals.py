@@ -1,14 +1,14 @@
 import logging
 
 import numpy as np
-
-# matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, pathpatch_2d_to_3d
 
 from craterslab.ellipse import EllipseVisualConfig, EllipticalModel
 from craterslab.profiles import Profile
 from craterslab.sensors import DepthMap
+
+logger = logging.getLogger(__name__)
 
 
 def plot_3D(
@@ -29,19 +29,19 @@ def plot_3D(
     x = np.linspace(0, dm.x_count * dm.x_res, dm.x_count)
     y = np.linspace(0, dm.y_count * dm.y_res, dm.y_count)
 
-    X, Y = np.meshgrid(x, y)
-    Z = dm.map * dm.z_res
+    grid_x, grid_y = np.meshgrid(x, y)
+    grid_z = dm.map * dm.z_res
 
     # Set up the plot
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
-    surface = ax.plot_surface(X, Y, Z, cmap="viridis")
+    surface = ax.plot_surface(grid_x, grid_y, grid_z, cmap="viridis")
 
     # Preserve aspect ratio
     aspect = [
-        preview_scale[0] * np.ptp(X),
-        preview_scale[1] * np.ptp(Y),
-        preview_scale[2] * np.ptp(Z),
+        preview_scale[0] * np.ptp(grid_x),
+        preview_scale[1] * np.ptp(grid_y),
+        preview_scale[2] * np.ptp(grid_z),
     ]
     ax.set_box_aspect(aspect)
 
@@ -92,7 +92,7 @@ def plot_2D(
     """
     Create a 2D plot of the surface
     """
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     ax.imshow(dm.map)
     ax.set_xlabel("X [px]", fontweight="bold", fontsize=15)
     ax.set_ylabel("Y [px]", fontweight="bold", fontsize=15)
@@ -108,7 +108,7 @@ def plot_2D(
 
     if ellipse is not None:
         ax.add_patch(ellipse.ellipse_patch())
-        ax.scatter(*list(zip(*ellipse.landmarks)))
+        ax.scatter(*list(zip(*ellipse.landmarks, strict=True)))
     plt.show(block=block)
 
 
@@ -116,7 +116,7 @@ def plot_profile(profile: Profile, draw_slopes: bool = False, block: bool = Fals
     """
     Create a profile plot
     """
-    fig, ax = plt.subplots()  # create figure and axes
+    _, ax = plt.subplots()  # create figure and axes
     ax.plot(profile.s, profile.h)
     ax.set_ylabel(f"Depth ({profile.dm.sensor.scale})", labelpad=13, fontsize=20)
     ax.set_xlabel(
@@ -137,7 +137,7 @@ def plot_profile(profile: Profile, draw_slopes: bool = False, block: bool = Fals
                 x_bounds, z_bounds = slope_bounds(profile, line_model, i0, i1)
                 ax.plot(x_bounds, z_bounds, color="blue", linestyle="--")
         else:
-            logging.error(
+            logger.error(
                 "Attempt to draw profile slopes failed."
                 "Make sure you are using the depth map from a crater"
             )
@@ -147,11 +147,11 @@ def plot_profile(profile: Profile, draw_slopes: bool = False, block: bool = Fals
 
 def slope_bounds(
     profile: Profile, line_model: np.poly1d, index_0: int, index_1: int
-) -> tuple[tuple[float, float], tuple[float, float]]:
+) -> tuple[list[float], list[float]]:
     x = [profile.s[index_0], profile.s[index_1]]
     if line_model:
         z = [line_model(v) for v in x]
     else:
         z = x
-        logging.error("Slopes are invalid")
+        logger.error("Slopes are invalid")
     return x, z
