@@ -35,6 +35,11 @@ def test_bounds(ramp: DepthMap) -> None:
     assert p.z_bounds[0] < p.z_bounds[1]
 
 
+def test_z_bounds_are_on_the_real_scale(ramp: DepthMap) -> None:
+    p = Profile(ramp, (0, 0), (30, 40), total_points=11)
+    assert p.z_bounds == pytest.approx((0.0, 35.0), abs=0.01)
+
+
 def test_angle(ramp: DepthMap) -> None:
     assert Profile(ramp, (0, 0), (10, 10)).ang == pytest.approx(math.pi / 4)
 

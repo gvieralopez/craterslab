@@ -124,6 +124,32 @@ def test_from_xyz_file_shifts_z(tmp_path: Path) -> None:
     assert shifted.map.mean() > plain.map.mean()
 
 
+def test_from_xyz_file_rescales_each_axis(tmp_path: Path) -> None:
+    _write_xyz(tmp_path)
+    dm = DepthMap.from_xyz_file(
+        "cloud.xyz", data_folder=str(tmp_path), rescaled_with=(2.0, 1.0, 1.0)
+    )
+    assert dm.map.shape == (9, 38)
+
+
+def test_rescale_touches_one_axis_at_a_time() -> None:
+    result = DepthMap._rescale(np.array([[1.0, 2.0, 3.0]]), (2.0, 3.0, 4.0))
+    assert result.tolist() == [[2.0, 6.0, 12.0]]
+
+
+def test_heights_use_the_z_resolution() -> None:
+    dm = DepthMap(np.array([[2.0, -4.0]]), SensorResolution(1.0, 1.0, 0.5))
+    assert dm.heights.tolist() == [[1.0, -2.0]]
+
+
+def test_auto_crop_keeps_a_surface_with_nothing_central(resolution: SensorResolution) -> None:
+    surface = np.zeros((100, 100), dtype=np.float32)
+    surface[2:14, 2:14] = 5
+    dm = DepthMap(surface, resolution)
+    dm.auto_crop()
+    assert dm.map.shape == (100, 100)
+
+
 def test_save_and_load(tmp_path: Path) -> None:
     original = DepthMap(np.arange(6.0).reshape(2, 3), SensorResolution(1.0, 2.0, 3.0, "cm"))
     path = tmp_path / "map.npz"

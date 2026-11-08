@@ -72,6 +72,11 @@ class DepthMap:
         self.crop(bb, padding)
 
     @property
+    def heights(self) -> np.ndarray:
+        """The depth map on the real-world z scale."""
+        return self.map * self.z_res
+
+    @property
     def x_count(self) -> int:
         return int(self.map.shape[1])
 
@@ -188,7 +193,7 @@ class DepthMap:
     def _rescale(array: np.ndarray, scale: tuple[float, float, float]) -> np.ndarray:
         for i in range(3):
             if scale[i] != 1:
-                array *= scale[i]
+                array[:, i] *= scale[i]
         return array
 
     @staticmethod

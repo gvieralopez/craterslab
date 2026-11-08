@@ -84,10 +84,10 @@ class Surface:
         return observables
 
     def _d_exc(self) -> float:
-        return float(np.min(self.dm.map) * self.dm.z_res)
+        return float(np.min(self.dm.heights))
 
     def _H_max(self) -> float:
-        return float(np.max(self.dm.map) * self.dm.z_res)
+        return float(np.max(self.dm.heights))
 
     def _ellipse(self) -> np.ndarray:
         # create a meshgrid of x and y coordinates
@@ -120,11 +120,11 @@ class Surface:
         ellipse_mask = (x_indices**2 / a**2) + (y_indices**2 / b**2) <= 1
 
         # Extract the points inside the ellipse from the ndarray
-        inner_values: np.ndarray = self.dm.map[ellipse_mask]
+        inner_values: np.ndarray = self.dm.heights[ellipse_mask]
         return inner_values
 
     def _h_rim(self) -> np.ndarray:
-        heights: np.ndarray = self.dm.map[self._ellipse_perimeter()] * self.dm.z_res
+        heights: np.ndarray = self.dm.heights[self._ellipse_perimeter()]
         return heights
 
     def _mean_h_rim(self) -> float:
@@ -132,23 +132,23 @@ class Surface:
 
     def _V_in(self) -> float:
         h_max, h_min = self._mean_h_rim(), self._d_exc()
-        inner_values = self.dm.map[self._ellipse_content()] - h_min
+        inner_values = self.dm.heights[self._ellipse_content()] - h_min
         positive_sum = np.sum(inner_values[inner_values <= h_max - h_min])
         return float(positive_sum * self.dm.x_res * self.dm.y_res)
 
     def _H_cp(self) -> float:
         points_inside_ellipse = self._inner_z_values()
-        max_val = np.max(points_inside_ellipse) * self.dm.z_res
+        max_val = np.max(points_inside_ellipse)
         return float(max_val - self._d_exc())
 
     def _V_cp(self) -> float:
-        points_inside_ellipse = self._inner_z_values() * self.dm.z_res
+        points_inside_ellipse = self._inner_z_values()
         points_inside_ellipse -= np.min(points_inside_ellipse)
         total_sum = np.sum(points_inside_ellipse)
         return float(total_sum * self.dm.x_res * self.dm.y_res)
 
     def _V_ex(self) -> float:
-        inner_values = self.dm.map[self._ellipse_content()]
+        inner_values = self.dm.heights[self._ellipse_content()]
         negative_sum = -np.sum(inner_values[inner_values < 0])
         return float(negative_sum * self.dm.x_res * self.dm.y_res)
 
@@ -186,7 +186,7 @@ class Surface:
     def H_m(self) -> Observable:
         val = self._H_max()
         units = self.dm.sensor.scale
-        return Observable("Maximum heigh", "H_cp", val, units)
+        return Observable("Maximum heigh", "H_m", val, units)
 
     def mean_h_rim(self) -> Observable:
         val = self._mean_h_rim()
@@ -204,7 +204,7 @@ class Surface:
         return Observable("Excavated Volume", "V_ex", val, units)
 
     def V_exc(self) -> Observable:
-        positive_sum = np.sum(self.dm.map[self.dm.map > 0])
+        positive_sum = np.sum(self.dm.heights[self.dm.heights > 0])
         val = positive_sum * self.dm.x_res * self.dm.y_res
         units = f"{self.dm.sensor.scale}³"
         return Observable("Excess Volume", "V_exc", val, units)
