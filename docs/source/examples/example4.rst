@@ -90,8 +90,8 @@ printing the surface object:
    Apparent Depth (d_max): -2280.23 m
    Eccentricity (epsilon): 0.13 
    Diameter (D): 78188.58 m
-   Maximum heigh (H_m): 3063.19 m
-   Mean Heigh over the rim (mean_h_rim): 1350.90 m
+   Maximum height (H_m): 3063.19 m
+   Mean Height over the rim (mean_h_rim): 1350.90 m
    Concavity Volume (V_in): 5392654283113.74 m³
    Excavated Volume (V_ex): 4729292363304.89 m³
    Excess Volume (V_exc): 4664067973505.89 m³

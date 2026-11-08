@@ -107,7 +107,6 @@ max-args = 10
 "scripts/**" = ["T20", "S603"]  # Allow print statements and subprocess calls on the scripts
 "scripts/train_classifier.py" = ["T20", "S603", "S311"]  # Data augmentation, not cryptography
 "examples/**" = ["T20"]  # The examples print their results
-"src/craterslab/craters.py" = ["N802"]  # Public physics names: V_in, H_cp, D...
 "src/craterslab/visuals.py" = ["N802"]  # Public names: plot_2D, plot_3D
 
 [tool.ruff.lint.isort]

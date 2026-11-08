@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from craterslab import craters
 from craterslab.classification import SurfaceType
 from craterslab.craters import Observable, Surface
 from craterslab.ellipse import EllipseFit, EllipticalModel
@@ -50,7 +51,7 @@ def test_a_flat_surface_cannot_get_a_known_type(resolution: SensorResolution) ->
 
 def test_values_of_an_unknown_surface_need_a_type(crater: DepthMap) -> None:
     with pytest.raises(ValueError, match="known type"):
-        Surface.from_depth_map(crater).D()
+        craters._diameter(Surface.from_depth_map(crater))
 
 
 @pytest.mark.parametrize(
@@ -173,12 +174,12 @@ def _rescaled(dm: DepthMap, factor: float) -> DepthMap:
     return DepthMap(dm.map * factor, sensor)
 
 
-@pytest.mark.parametrize("name", ["_V_in", "_V_ex", "_V_cp", "_H_cp", "_mean_h_rim", "_d_exc"])
-def test_values_do_not_depend_on_the_z_resolution(crater: DepthMap, name: str) -> None:
+@pytest.mark.parametrize("symbol", sorted(COMPLEX))
+def test_values_do_not_depend_on_the_z_resolution(crater: DepthMap, symbol: str) -> None:
     surface = Surface.from_depth_map(crater, SurfaceType.COMPLEX_CRATER)
-    before = getattr(surface, name)()
+    before = surface.observables[symbol].value
     surface.dm = _rescaled(crater, 2.0)
-    assert getattr(surface, name)() == pytest.approx(before)
+    assert surface.compute_observables()[symbol].value == pytest.approx(before)
 
 
 def test_excess_volume_uses_all_three_resolutions(crater: DepthMap) -> None:
@@ -186,11 +187,29 @@ def test_excess_volume_uses_all_three_resolutions(crater: DepthMap) -> None:
     block = crater.map * 0
     block[:4, :5] = 8.0
     surface.dm = DepthMap(block, SensorResolution(2.0, 3.0, 0.5, "cm"))
-    assert surface.V_exc().value == pytest.approx(20 * 4.0 * 6.0)
+    assert surface.compute_observables()["V_exc"].value == pytest.approx(20 * 4.0 * 6.0)
 
 
 def test_maximum_height_has_its_own_symbol(crater: DepthMap) -> None:
-    assert Surface.from_depth_map(crater, SurfaceType.SIMPLE_CRATER).H_m().symbol == "H_m"
+    surface = Surface.from_depth_map(crater, SurfaceType.SIMPLE_CRATER)
+    assert surface.observables["H_m"].symbol == "H_m"
+
+
+def test_every_observable_is_defined_once() -> None:
+    symbols = [definition.symbol for definition in craters.OBSERVABLES]
+    assert len(symbols) == len(set(symbols))
+    assert set(symbols) == COMPLEX
+
+
+@pytest.mark.parametrize(("symbol", "units"), [("epsilon", ""), ("D", "mm"), ("V_in", "mm³")])
+def test_units_follow_the_sensor_scale(crater: DepthMap, symbol: str, units: str) -> None:
+    surface = Surface.from_depth_map(crater, SurfaceType.SIMPLE_CRATER)
+    assert surface.observables[symbol].units == units
+
+
+def test_observables_are_listed_in_table_order(crater: DepthMap) -> None:
+    surface = Surface.from_depth_map(crater, SurfaceType.COMPLEX_CRATER)
+    assert list(surface.observables) == [d.symbol for d in craters.OBSERVABLES]
 
 
 def _tilted_fit() -> EllipseFit:
