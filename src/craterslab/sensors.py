@@ -193,7 +193,7 @@ class DepthMap:
     def _rescale(array: np.ndarray, scale: tuple[float, float, float]) -> np.ndarray:
         for i in range(3):
             if scale[i] != 1:
-                array *= scale[i]
+                array[:, i] *= scale[i]
         return array
 
     @staticmethod
