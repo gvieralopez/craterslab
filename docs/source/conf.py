@@ -9,13 +9,13 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../"))
-sys.path.insert(0, os.path.abspath("../../craterslab/"))
+sys.path.insert(0, os.path.abspath("../../src/"))
+sys.path.insert(0, os.path.abspath("../../src/craterslab/"))
 
 project = "craterslab"
 copyright = "2023, Gustavo Viera-López"
 author = "Gustavo Viera-López, Frank Corrales Machín"
-release = "0.1.1"
+release = "0.2.9-beta0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

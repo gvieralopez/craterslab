@@ -1,7 +1,7 @@
 Installation and compatibility
 ==============================
 
-Craterslab requires Python 3.10+ for functioning. Make sure you have a compliant 
+Craterslab requires Python 3.11+ for functioning. Make sure you have a compliant 
 version of `python <https://www.python.org/downloads/>`_ installed in your system.
 
 Installing craterslab from pypi using pip (Recommended) 
@@ -14,15 +14,14 @@ We strongly encourage users using this method to create a
 before installing the library.
 
 
-Installing craterslab from the repository using poetry 
-------------------------------------------------------
-Make sure you have `poetry <https://python-poetry.org/docs/>`_ in your system 
-and then run:
+Installing craterslab from the repository using uv
+--------------------------------------------------
+Make sure you have `uv <https://docs.astral.sh/uv/getting-started/installation/>`_
+in your system and then run:
 
 >>> git clone https://github.com/gvieralopez/craterslab.git
 >>> cd craterslab
->>> poetry install
->>> poetry shell
+>>> uv sync
 
-These will create and activate an isolated virtual environment with craterslab 
-installed on it. 
+These will create an isolated virtual environment with craterslab installed on
+it. Run commands inside it with ``uv run``.

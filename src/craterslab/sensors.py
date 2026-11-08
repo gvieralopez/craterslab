@@ -1,12 +1,15 @@
+import importlib.util
 import logging
 import pathlib
 from dataclasses import dataclass
 
 import numpy as np
 import scipy.io
-from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import gaussian_filter
 
 from craterslab.images import compute_bounding_box, crop_img
+
+logger = logging.getLogger(__name__)
 
 VALID_SCALES = ["mm", "cm", "dm", "m", "km"]
 AUTO_CROP_THRESHOLD = 1.5
@@ -21,7 +24,7 @@ class SensorResolution:
     scale: str = "mm"
 
     def __post_init__(self) -> None:
-        if not self.scale in VALID_SCALES:
+        if self.scale not in VALID_SCALES:
             raise ValueError("Unknown scale factor")
 
     def xyz(self) -> tuple[float, float, float]:
@@ -55,11 +58,12 @@ class DepthMap:
     def crop(self, bounding_box: tuple[int, int, int, int], padding: int = 0) -> None:
         self.map = crop_img(self.map, *bounding_box, gap=padding)
 
-    def crop_borders(self, ratio: float):
-        assert ratio > 0 and ratio < 1
+    def crop_borders(self, ratio: float) -> None:
+        if not 0 < ratio < 1:
+            raise ValueError("The ratio needs to be between 0 and 1")
         x0, y0 = self.x_count * ratio / 2, self.y_count * ratio / 2
-        bb = map(int, [x0, y0, self.x_count - 2 * x0, self.y_count - 2 * y0])
-        self.crop(tuple(bb))
+        left, top, width, height = map(int, [x0, y0, self.x_count - 2 * x0, self.y_count - 2 * y0])
+        self.crop((left, top, width, height))
 
     def auto_crop(
         self, threshold: float = AUTO_CROP_THRESHOLD, padding: int = AUTO_CROP_PADDING
@@ -69,11 +73,11 @@ class DepthMap:
 
     @property
     def x_count(self) -> int:
-        return self.map.shape[1]
+        return int(self.map.shape[1])
 
     @property
     def y_count(self) -> int:
-        return self.map.shape[0]
+        return int(self.map.shape[0])
 
     @classmethod
     def from_mat_file(
@@ -127,19 +131,19 @@ class DepthMap:
 
     @staticmethod
     def kinect_driver_available() -> bool:
-        try:
-            from libkinect2 import Kinect2
+        if importlib.util.find_spec("libkinect2") is not None:
             return True
-        except ModuleNotFoundError:
-            logging.error(
-                'Kinect2 driver is not installed, To install it run: pip install https://github.com/sshh12/LibKinect2/releases/download/v0.1.0/libkinect2-0.1.0.tar.gz')
-            return False
+        logger.error(
+            "Kinect2 driver is not installed, To install it run: pip install https://github.com/sshh12/LibKinect2/releases/download/v0.1.0/libkinect2-0.1.0.tar.gz"
+        )
+        return False
 
     @staticmethod
     def _get_kinect_depthmap(average_on: int) -> np.ndarray:
         # Init Kinect2 w/2 sensors
-        from libkinect2 import Kinect2
-        kinect = Kinect2(use_sensors=['depth'])
+        from libkinect2 import Kinect2  # noqa: PLC0415 (optional, needs the device driver)
+
+        kinect = Kinect2(use_sensors=["depth"])
         kinect.connect()
         kinect.wait_for_worker()
         _, depth_map = next(kinect.iter_frames())
@@ -152,7 +156,8 @@ class DepthMap:
             depth_map = np.mean(samples, axis=-1)
         kinect.disconnect()
 
-        return np.squeeze(depth_map)
+        result: np.ndarray = np.squeeze(depth_map)
+        return result
 
     @classmethod
     def from_kinect_sensor(cls, resolution: SensorResolution, average_on: int = 1) -> "DepthMap":
@@ -164,16 +169,15 @@ class DepthMap:
         raise NotImplementedError
 
     @staticmethod
-    def _from_mat_file(
-        file_name: str, data_folder: str, variable_name: str | None
-    ) -> np.ndarray:
+    def _from_mat_file(file_name: str, data_folder: str, variable_name: str | None) -> np.ndarray:
         # Load the .mat file
         file_path = pathlib.Path(data_folder, file_name)
         mat_contents = scipy.io.loadmat(file_path)
 
         # Access the desired variable from the .mat file
         variable_name = variable_name if variable_name else file_name[:-4]
-        return mat_contents[variable_name]
+        content: np.ndarray = mat_contents[variable_name]
+        return content
 
     @staticmethod
     def _from_xyz_file(file_name: str, data_folder: str) -> np.ndarray:
@@ -181,14 +185,16 @@ class DepthMap:
         return np.loadtxt(file_path, skiprows=2)
 
     @staticmethod
-    def _rescale(array, scale):
+    def _rescale(array: np.ndarray, scale: tuple[float, float, float]) -> np.ndarray:
         for i in range(3):
             if scale[i] != 1:
                 array *= scale[i]
         return array
 
     @staticmethod
-    def _point_cloud_to_depth_map(point_cloud, resolution: SensorResolution):
+    def _point_cloud_to_depth_map(
+        point_cloud: np.ndarray, resolution: SensorResolution
+    ) -> np.ndarray:
         x, y, z = point_cloud.T
         x_min, x_max = np.min(x), np.max(x)
         y_min, y_max = np.min(y), np.max(y)
@@ -204,7 +210,7 @@ class DepthMap:
         _y = np.clip(np.round((y - y_min) / resolution.y).astype(int), 0, rows - 1)
 
         # Assign the z values to the corresponding matrix elements
-        for xi, yi, zi in zip(_x, _y, z):
+        for xi, yi, zi in zip(_x, _y, z, strict=True):
             matrix[yi, xi] += zi
             point_count[yi, xi] += 1
 
@@ -212,9 +218,10 @@ class DepthMap:
         result = np.zeros_like(matrix)
         np.divide(matrix, point_count, out=result, where=point_count != 0)
 
-        return gaussian_filter(result, sigma=2)
+        smoothed: np.ndarray = gaussian_filter(result, sigma=2)
+        return smoothed
 
-    def save(self, path: pathlib.Path | str):
+    def save(self, path: pathlib.Path | str) -> None:
         np.savez(
             path,
             depthmap=self.map,
@@ -227,8 +234,6 @@ class DepthMap:
     @classmethod
     def load(cls, path: pathlib.Path | str) -> "DepthMap":
         with np.load(path) as data:
-            sensor = SensorResolution(
-                data["xres"], data["yres"], data["zres"], data["scale"]
-            )
+            sensor = SensorResolution(data["xres"], data["yres"], data["zres"], data["scale"])
             dm = data["depthmap"]
             return DepthMap(dm, sensor)

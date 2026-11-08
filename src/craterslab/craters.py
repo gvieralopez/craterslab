@@ -1,6 +1,7 @@
-import math
 import logging
+import math
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -8,9 +9,11 @@ from craterslab.classification import SurfaceType, get_trained_model, normalize
 from craterslab.ellipse import EllipticalModel
 from craterslab.sensors import DepthMap
 
+logger = logging.getLogger(__name__)
+
 # Groups of surfaces
 CRATER_SURFACES = [SurfaceType.SIMPLE_CRATER, SurfaceType.COMPLEX_CRATER]
-ALL_KNOWN_SURFACES = CRATER_SURFACES + [SurfaceType.SAND_MOUND]
+ALL_KNOWN_SURFACES = [*CRATER_SURFACES, SurfaceType.SAND_MOUND]
 
 
 @dataclass
@@ -20,7 +23,7 @@ class Observable:
     value: float
     units: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name} ({self.symbol}): {self.value:.2f} {self.units}"
 
 
@@ -35,7 +38,7 @@ class Surface:
         self.max_profile = self.em.max_profile()
         self.type = self.classify()
 
-        self.available_observables = {
+        self.available_observables: dict[str, dict[str, Any]] = {
             "d_max": {"func": self.d_max, "compute_for": ALL_KNOWN_SURFACES},
             "d_exc": {"func": self.d_exc, "compute_for": ALL_KNOWN_SURFACES},
             "epsilon": {"func": self.epsilon, "compute_for": CRATER_SURFACES},
@@ -51,7 +54,7 @@ class Surface:
 
         self.init_observables()
 
-    def init_observables(self):
+    def init_observables(self) -> None:
         if self.type == SurfaceType.COMPLEX_CRATER:
             self.inner_ellipse = EllipticalModel(self.dm, self.em.points, inner=True)
         self.observables = self.compute_observables()
@@ -60,7 +63,7 @@ class Surface:
         output = "\n".join([str(o) for o_id, o in self.observables.items()])
         return f"\nFound: {self.type}\n\n{output}"
 
-    def set_type(self, surface_type: SurfaceType):
+    def set_type(self, surface_type: SurfaceType) -> None:
         self.type = surface_type
         self.init_observables()
 
@@ -70,7 +73,7 @@ class Surface:
             img = normalize(self.dm.map)
             class_id = np.argmax(classifier.predict(img))
             return SurfaceType(class_id)
-        logging.warning(f"Using default class {SurfaceType(1)}")
+        logger.warning("Using default class %s", SurfaceType(1))
         return SurfaceType(1)
 
     def compute_observables(self) -> dict[str, Observable]:
@@ -81,10 +84,10 @@ class Surface:
         return observables
 
     def _d_exc(self) -> float:
-        return np.min(self.dm.map) * self.dm.z_res
+        return float(np.min(self.dm.map) * self.dm.z_res)
 
     def _H_max(self) -> float:
-        return np.max(self.dm.map) * self.dm.z_res
+        return float(np.max(self.dm.map) * self.dm.z_res)
 
     def _ellipse(self) -> np.ndarray:
         # create a meshgrid of x and y coordinates
@@ -92,24 +95,22 @@ class Surface:
 
         # calculate the ellipse equation for each point in the grid
         a, b, x0, y0, theta = self.em.params()
-        x_rot = (x - x0) * np.cos(theta) - (y - y0) * np.sin(
-            theta
-        )  # rotate x coordinates
-        y_rot = (x - x0) * np.sin(theta) + (y - y0) * np.cos(
-            theta
-        )  # rotate y coordinates
-        return ((x_rot) ** 2 / a**2) + ((y_rot) ** 2 / b**2)
+        x_rot = (x - x0) * np.cos(theta) - (y - y0) * np.sin(theta)  # rotate x coordinates
+        y_rot = (x - x0) * np.sin(theta) + (y - y0) * np.cos(theta)  # rotate y coordinates
+        result: np.ndarray = ((x_rot) ** 2 / a**2) + ((y_rot) ** 2 / b**2)
+        return result
 
-    def _ellipse_perimeter(self) -> np.ndarray[bool]:
-        return np.isclose(self._ellipse(), 1, rtol=0, atol=0.05).T
+    def _ellipse_perimeter(self) -> np.ndarray:
+        perimeter: np.ndarray = np.isclose(self._ellipse(), 1, rtol=0, atol=0.05).T
+        return perimeter
 
-    def _ellipse_content(self) -> np.ndarray[bool]:
+    def _ellipse_content(self) -> np.ndarray:
         return np.transpose(self._ellipse() <= 1)
 
-    def _inner_z_values(self) -> np.array:
+    def _inner_z_values(self) -> np.ndarray:
         a, b, cx, cy, _ = self.inner_ellipse.params()
-        M, N = self.dm.map.shape
-        x_indices, y_indices = np.meshgrid(np.arange(N), np.arange(M))
+        rows, cols = self.dm.map.shape
+        x_indices, y_indices = np.meshgrid(np.arange(cols), np.arange(rows))
 
         # Translate the grid coordinates to the ellipse center
         x_indices -= int(cx)
@@ -119,41 +120,43 @@ class Surface:
         ellipse_mask = (x_indices**2 / a**2) + (y_indices**2 / b**2) <= 1
 
         # Extract the points inside the ellipse from the ndarray
-        return self.dm.map[ellipse_mask]
+        inner_values: np.ndarray = self.dm.map[ellipse_mask]
+        return inner_values
 
-    def _h_rim(self):
-        return self.dm.map[self._ellipse_perimeter()] * self.dm.z_res
+    def _h_rim(self) -> np.ndarray:
+        heights: np.ndarray = self.dm.map[self._ellipse_perimeter()] * self.dm.z_res
+        return heights
 
     def _mean_h_rim(self) -> float:
-        return np.mean(self._h_rim())
+        return float(np.mean(self._h_rim()))
 
     def _V_in(self) -> float:
         h_max, h_min = self._mean_h_rim(), self._d_exc()
         inner_values = self.dm.map[self._ellipse_content()] - h_min
         positive_sum = np.sum(inner_values[inner_values <= h_max - h_min])
-        return positive_sum * self.dm.x_res * self.dm.y_res 
+        return float(positive_sum * self.dm.x_res * self.dm.y_res)
 
     def _H_cp(self) -> float:
         points_inside_ellipse = self._inner_z_values()
         max_val = np.max(points_inside_ellipse) * self.dm.z_res
-        return max_val - self._d_exc()
-    
+        return float(max_val - self._d_exc())
+
     def _V_cp(self) -> float:
         points_inside_ellipse = self._inner_z_values() * self.dm.z_res
-        points_inside_ellipse -=  np.min(points_inside_ellipse)
+        points_inside_ellipse -= np.min(points_inside_ellipse)
         total_sum = np.sum(points_inside_ellipse)
-        return total_sum * self.dm.x_res * self.dm.y_res   
+        return float(total_sum * self.dm.x_res * self.dm.y_res)
 
     def _V_ex(self) -> float:
         inner_values = self.dm.map[self._ellipse_content()]
         negative_sum = -np.sum(inner_values[inner_values < 0])
-        return negative_sum * self.dm.x_res * self.dm.y_res
+        return float(negative_sum * self.dm.x_res * self.dm.y_res)
 
     def d_max(self) -> Observable:
         val = abs(self._d_exc()) + abs(self._mean_h_rim())
         units = self.dm.sensor.scale
         return Observable("Apparent Depth", "d_max", val, units)
-    
+
     def d_exc(self) -> Observable:
         val = self._d_exc()
         units = self.dm.sensor.scale
