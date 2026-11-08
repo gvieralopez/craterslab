@@ -36,9 +36,8 @@ def test_fits_the_rim_of_a_crater(crater: DepthMap) -> None:
 
 
 def test_inner_landmarks_are_inside_the_rim(crater: DepthMap) -> None:
-    outer = EllipticalModel(crater, 20)
     inner = EllipticalModel(crater, 20, inner=True)
-    assert inner.a < outer.a
+    assert all(np.hypot(x - 50, y - 50) < 30 for x, y in inner.landmarks)
 
 
 def test_too_few_landmarks_skip_the_fit(
