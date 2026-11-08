@@ -1,4 +1,3 @@
-import logging
 import math
 import pathlib
 from collections.abc import Callable
@@ -11,8 +10,6 @@ from craterslab.classification import Classifier, SurfaceType
 from craterslab.ellipse import EllipseFit, EllipticalModel
 from craterslab.profiles import Profile
 from craterslab.sensors import DepthMap
-
-logger = logging.getLogger(__name__)
 
 # Groups of surfaces
 COMPLEX_SURFACES = (SurfaceType.COMPLEX_CRATER,)
