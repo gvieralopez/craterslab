@@ -30,11 +30,11 @@ def resolution() -> SensorResolution:
 
 @pytest.fixture
 def crater(resolution: SensorResolution) -> DepthMap:
-    """A round synthetic crater: bowl of radius 30, rim of height 2, depth 10 below the rim."""
+    """A round synthetic crater: bowl of radius 30, rim of height 2 and a central peak."""
     size, radius, depth, rim = 101, 30.0, 10.0, 2.0
     y, x = np.mgrid[:size, :size]
     r = np.hypot(x - size // 2, y - size // 2)
-    bowl = rim - depth * (1 - (r / radius) ** 2)
+    bowl = rim - depth * (1 - (r / radius) ** 2) + 10 * np.exp(-((r / 6) ** 2))
     outside = rim * np.exp(-(((r - radius) / 8) ** 2))
     return DepthMap(np.where(r < radius, bowl, outside), resolution)
 

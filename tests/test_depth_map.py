@@ -60,10 +60,10 @@ def test_crop_borders_rejects_bad_ratios(resolution: SensorResolution, ratio: fl
 
 
 def test_auto_crop_keeps_the_crater(crater: DepthMap) -> None:
-    before = crater.map.shape
+    before, deepest = crater.map.shape, crater.map.min()
     crater.auto_crop()
     assert crater.map.shape[0] <= before[0]
-    assert crater.map.min() == pytest.approx(-8.0, abs=0.1)
+    assert crater.map.min() == deepest
 
 
 def test_heights_use_the_z_resolution() -> None:

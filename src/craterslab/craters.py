@@ -1,3 +1,4 @@
+import logging
 import math
 import pathlib
 from collections.abc import Callable
@@ -11,12 +12,15 @@ from craterslab.depth_map import DepthMap
 from craterslab.ellipse import EllipseFit, EllipticalModel
 from craterslab.profiles import Profile
 
+logger = logging.getLogger(__name__)
+
 # Groups of surfaces
 COMPLEX_SURFACES = (SurfaceType.COMPLEX_CRATER,)
 CRATER_SURFACES = (SurfaceType.SIMPLE_CRATER, *COMPLEX_SURFACES)
 ALL_KNOWN_SURFACES = (*CRATER_SURFACES, SurfaceType.SAND_MOUND)
 
 DEFAULT_ELLIPSE_POINTS = 20
+CENTRAL_PEAK_OBSERVABLES = frozenset({"H_cp", "V_cp"})
 
 
 @dataclass
@@ -118,11 +122,24 @@ class Surface:
             self.inner_ellipse = EllipticalModel(self.dm, self.ellipse_points, inner=True)
 
     def compute_observables(self) -> dict[str, Observable]:
+        unreliable = self._unreliable_observables()
         return {
             definition.symbol: definition.measure(self)
             for definition in OBSERVABLES
-            if self.type in definition.surfaces
+            if self.type in definition.surfaces and definition.symbol not in unreliable
         }
+
+    def _unreliable_observables(self) -> frozenset[str]:
+        inner, rim = self.inner_ellipse, self.em
+        if self.type is not SurfaceType.COMPLEX_CRATER or inner is None or rim is None:
+            return frozenset()
+        if inner.a <= rim.a and inner.b <= rim.b:
+            return frozenset()
+        logger.warning(
+            "The inner ellipse is larger than the rim, leaving out %s",
+            ", ".join(sorted(CENTRAL_PEAK_OBSERVABLES)),
+        )
+        return CENTRAL_PEAK_OBSERVABLES
 
 
 def _fitted(model: EllipticalModel | None) -> EllipticalModel:

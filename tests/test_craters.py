@@ -240,3 +240,64 @@ def test_the_central_peak_follows_a_tilted_ellipse(resolution: SensorResolution)
     depth_map.map = heights
     surface = Surface(depth_map, SurfaceType.COMPLEX_CRATER, 20, em, em)
     assert surface.observables["H_cp"].value == pytest.approx(7.0)
+
+
+def _with_oversized_inner_ellipse(resolution: SensorResolution) -> Surface:
+    heights = np.zeros((120, 120))
+    heights[55, 60] = 7.0
+    depth_map = DepthMap(heights, resolution)
+    rim = EllipticalModel(depth_map, 20, fit=EllipseFit(30.0, 25.0, 60.0, 55.0, 0.0, [(0.0, 0.0)]))
+    inner = EllipticalModel(
+        depth_map, 20, fit=EllipseFit(45.0, 20.0, 60.0, 55.0, 0.0, [(0.0, 0.0)])
+    )
+    return Surface(depth_map, SurfaceType.COMPLEX_CRATER, 20, rim, inner)
+
+
+def test_an_inner_ellipse_larger_than_the_rim_leaves_out_the_central_peak(
+    resolution: SensorResolution, caplog: pytest.LogCaptureFixture
+) -> None:
+    surface = _with_oversized_inner_ellipse(resolution)
+    assert "H_cp" not in surface.observables
+    assert "V_cp" not in surface.observables
+    assert "D" in surface.observables
+    assert "larger than the rim" in caplog.text
+
+
+@pytest.mark.parametrize(("a", "b"), [(30.0, 25.0), (20.0, 15.0)])
+def test_an_inner_ellipse_within_the_rim_keeps_the_central_peak(
+    resolution: SensorResolution, a: float, b: float
+) -> None:
+    depth_map = DepthMap(np.ones((120, 120)), resolution)
+    rim = EllipticalModel(depth_map, 20, fit=EllipseFit(30.0, 25.0, 60.0, 55.0, 0.0, [(0.0, 0.0)]))
+    inner = EllipticalModel(depth_map, 20, fit=EllipseFit(a, b, 60.0, 55.0, 0.0, [(0.0, 0.0)]))
+    surface = Surface(depth_map, SurfaceType.COMPLEX_CRATER, 20, rim, inner)
+    assert {"H_cp", "V_cp"} <= set(surface.observables)
+
+
+def test_a_saved_oversized_inner_ellipse_stays_left_out(
+    resolution: SensorResolution, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "surface.npz"
+    _with_oversized_inner_ellipse(resolution).save(path)
+
+    def fail(*args: object) -> None:
+        raise AssertionError("the ellipse was fitted again")
+
+    monkeypatch.setattr(EllipticalModel, "_compute_ellipse", fail)
+    assert "V_cp" not in Surface.load(path).observables
+
+
+def test_another_type_ignores_an_oversized_inner_ellipse(
+    resolution: SensorResolution, caplog: pytest.LogCaptureFixture
+) -> None:
+    surface = _with_oversized_inner_ellipse(resolution)
+    caplog.clear()
+    surface.set_type(SurfaceType.SIMPLE_CRATER)
+    assert "larger than the rim" not in caplog.text
+
+
+def test_the_synthetic_crater_has_a_stable_inner_ellipse(crater: DepthMap) -> None:
+    surface = Surface.from_depth_map(crater, SurfaceType.COMPLEX_CRATER)
+    assert surface.inner_ellipse is not None
+    assert surface.em is not None
+    assert surface.inner_ellipse.a < 0.7 * surface.em.a

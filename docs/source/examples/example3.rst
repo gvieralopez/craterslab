@@ -88,6 +88,11 @@ crater. We can check the value of its observables by:
    Excavated Volume (V_ex): 27954.53 mm³
    """
 
+.. note::
+   The height and volume of the central peak (``H_cp`` and ``V_cp``) need an 
+   inner ellipse inside the rim. When the fit gives one larger than the rim, 
+   they are left out and a warning is logged, instead of reporting a wrong value.
+
 Saving and loading
 ------------------
 
