@@ -19,7 +19,6 @@ classifiers = [
 
 dependencies = [
     "numpy>=1.24.0",
-    "opencv-python>=4.8.0",
     "scipy>=1.11.1",
     "matplotlib>=3.7.2",
 ]
@@ -28,6 +27,7 @@ dependencies = [
 classification = [
     "keras>=3.0.0",
     "tensorflow>=2.13.0",
+    "opencv-python>=4.8.0",
 ]
 
 [project.urls]
@@ -47,6 +47,7 @@ dev = [
     # TensorFlow has no wheels for Python 3.14 or newer yet
     "keras>=3.0.0; python_version < '3.14'",
     "tensorflow>=2.13.0; python_version < '3.14'",
+    "opencv-python>=4.8.0; python_version < '3.14'",
     "scikit-learn>=1.3.0; python_version < '3.14'",  # scripts/train_classifier.py
 ]
 

@@ -27,6 +27,10 @@
 
 ---
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/gvieralopez/craterslab/main/docs/source/images/2c.png" alt="A laboratory crater as a depth map and in 3D, with the ellipse craterslab fits to its rim" width="800">
+</p>
+
 ## Installation
 
 Craterslab requires Python 3.11+ for functioning. Make sure you have a compliant version of [python](https://www.python.org/downloads/) installed in your system.

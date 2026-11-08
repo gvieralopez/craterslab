@@ -1,12 +1,12 @@
 from pathlib import Path
 
-import cv2
 import numpy as np
 
 from craterslab.classification import SurfaceType
 from craterslab.sensors import DepthMap
 
 try:
+    import cv2
     import keras
 except ImportError as error:
     raise ImportError(

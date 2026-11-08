@@ -583,7 +583,6 @@ dependencies = [
     { name = "matplotlib" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "opencv-python" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
@@ -591,6 +590,7 @@ dependencies = [
 [package.optional-dependencies]
 classification = [
     { name = "keras" },
+    { name = "opencv-python" },
     { name = "tensorflow" },
 ]
 
@@ -599,6 +599,7 @@ dev = [
     { name = "ebump" },
     { name = "keras", marker = "python_full_version < '3.14'" },
     { name = "mypy" },
+    { name = "opencv-python", marker = "python_full_version < '3.14'" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -613,7 +614,7 @@ requires-dist = [
     { name = "keras", marker = "extra == 'classification'", specifier = ">=3.0.0" },
     { name = "matplotlib", specifier = ">=3.7.2" },
     { name = "numpy", specifier = ">=1.24.0" },
-    { name = "opencv-python", specifier = ">=4.8.0" },
+    { name = "opencv-python", marker = "extra == 'classification'", specifier = ">=4.8.0" },
     { name = "scipy", specifier = ">=1.11.1" },
     { name = "tensorflow", marker = "extra == 'classification'", specifier = ">=2.13.0" },
 ]
@@ -624,6 +625,7 @@ dev = [
     { name = "ebump", specifier = ">=0.2.2" },
     { name = "keras", marker = "python_full_version < '3.14'", specifier = ">=3.0.0" },
     { name = "mypy", specifier = ">=2.4" },
+    { name = "opencv-python", marker = "python_full_version < '3.14'", specifier = ">=4.8.0" },
     { name = "pre-commit", specifier = ">=4.7" },
     { name = "pytest", specifier = ">=9.1" },
     { name = "pytest-cov", specifier = ">=7.1" },
