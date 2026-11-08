@@ -1,9 +1,7 @@
 # Craterslab Example Script No. 8:
 # Save a classified surface and load it back without classifying it again
 
-from craterslab.classification import SurfaceType
-from craterslab.craters import Surface
-from craterslab.depth_map import DepthMap
+from craterslab import DepthMap, Surface, SurfaceType
 
 depth_map = DepthMap.load("examples/data/fluidized_1.npz")
 depth_map.auto_crop()

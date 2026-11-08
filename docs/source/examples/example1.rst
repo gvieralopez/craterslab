@@ -40,8 +40,8 @@ The resulting code would be:
 
 .. code-block:: python
 
-   from craterslab.depth_map import SensorResolution
-   from craterslab.sensors import capture_kinect
+   from craterslab import SensorResolution
+   from craterslab import capture_kinect
    resolution = SensorResolution(2.8025, 2.8025, 1.0, 'mm')
    depth_map = capture_kinect(resolution, average_on=500)
 
@@ -54,7 +54,7 @@ resolution experimentally before using its measurements for science:
 
 .. code-block:: python
 
-   from craterslab.sensors import capture_femto_bolt
+   from craterslab import capture_femto_bolt
    depth_map = capture_femto_bolt(resolution, average_on=500, timeout_ms=1000)
 
 .. _cloud points 1:
@@ -89,7 +89,7 @@ Then, we can use this resolution to create a DepthMap as:
 
 .. code-block:: python
 
-   from craterslab.readers import read_xyz
+   from craterslab import read_xyz
    depth_map = read_xyz("king.xyz", data_resolution)
 
 In the previous example, we are using 

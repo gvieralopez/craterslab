@@ -1,9 +1,7 @@
 # Craterslab Example Script No. 6:
 # Fetching depth maps from kinect sensor
 
-from craterslab.depth_map import SensorResolution
-from craterslab.sensors import capture_kinect
-from craterslab.visuals import plot_3D
+from craterslab import SensorResolution, capture_kinect, plot_3D
 
 # Establish sensor resolution obtained expermentally
 resolution = SensorResolution(2.8025, 2.8025, 1.0, "mm")

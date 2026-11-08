@@ -1,8 +1,7 @@
 # Craterslab Example Script No. 1:
 # Load a single depth map from file and plot it
 
-from craterslab.depth_map import DepthMap
-from craterslab.visuals import plot_2D, plot_3D
+from craterslab import DepthMap, plot_2D, plot_3D
 
 depth_map = DepthMap.load("examples/data/fluidized_1.npz")
 depth_map.auto_crop()

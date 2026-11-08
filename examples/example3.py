@@ -2,11 +2,8 @@
 # Load a cloud point from an xyz file containing the data from the King crater.
 # The crater is then analyzed using craterslab functionalities.
 
+from craterslab import SensorResolution, Surface, plot_2D, plot_3D, plot_profile, read_xyz
 from craterslab.cnn import CNNClassifier
-from craterslab.craters import Surface
-from craterslab.depth_map import SensorResolution
-from craterslab.readers import read_xyz
-from craterslab.visuals import plot_2D, plot_3D, plot_profile
 
 # Define sensor resolution
 data_resolution = SensorResolution(235.65, 235.65, 1.0, "m")

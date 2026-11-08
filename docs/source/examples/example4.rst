@@ -22,11 +22,11 @@ Import all the dependencies:
 
 .. code-block:: python
 
-   from craterslab.depth_map import SensorResolution
-   from craterslab.readers import read_xyz
-   from craterslab.visuals import plot_2D, plot_3D, plot_profile
+   from craterslab import SensorResolution
+   from craterslab import read_xyz
+   from craterslab import plot_2D, plot_3D, plot_profile
    from craterslab.cnn import CNNClassifier
-   from craterslab.craters import Surface
+   from craterslab import Surface
 
 
 .. _Loading Data 1:
