@@ -112,10 +112,18 @@ def test_the_center_distance_limit(col: int, central: bool) -> None:
     assert central_regions(regions, 1).any() == central
 
 
-def test_the_image_center_is_compared_with_its_axes_swapped() -> None:
-    # Kept from the OpenCV version: (x, y) of a region against (rows, cols) of the image
+@pytest.mark.parametrize(("shape", "pixel"), [((40, 100), (20, 50)), ((100, 40), (50, 20))])
+def test_the_center_of_a_non_square_image_is_central(
+    shape: tuple[int, int], pixel: tuple[int, int]
+) -> None:
+    regions = np.zeros(shape, dtype=int)
+    regions[pixel] = 1
+    assert central_regions(regions, 1).any()
+
+
+def test_a_far_region_of_a_non_square_image_is_not_central() -> None:
     regions = np.zeros((40, 100), dtype=int)
-    regions[20, 50] = 1
+    regions[20, 95] = 1
     assert not central_regions(regions, 1).any()
 
 

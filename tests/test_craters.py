@@ -6,7 +6,7 @@ import pytest
 
 from craterslab.classification import SurfaceType
 from craterslab.craters import Observable, Surface
-from craterslab.ellipse import EllipticalModel
+from craterslab.ellipse import EllipseFit, EllipticalModel
 from craterslab.sensors import DepthMap, SensorResolution
 
 COMMON = {"d_max", "d_exc", "H_m", "V_exc"}
@@ -191,3 +191,33 @@ def test_excess_volume_uses_all_three_resolutions(crater: DepthMap) -> None:
 
 def test_maximum_height_has_its_own_symbol(crater: DepthMap) -> None:
     assert Surface.from_depth_map(crater, SurfaceType.SIMPLE_CRATER).H_m().symbol == "H_m"
+
+
+def _tilted_fit() -> EllipseFit:
+    return EllipseFit(40.0, 18.0, 60.0, 55.0, 0.6, [(0.0, 0.0)])
+
+
+def test_volumes_follow_a_tilted_ellipse(resolution: SensorResolution) -> None:
+    depth_map = DepthMap(np.zeros((120, 120)), resolution)
+    em = EllipticalModel(depth_map, 20, fit=_tilted_fit())
+    depth_map.map = np.where(em.interior(), -1.0, 0.0)
+    surface = Surface(depth_map, SurfaceType.SIMPLE_CRATER, 20, em, None)
+    assert surface.observables["V_ex"].value == pytest.approx(em.interior().sum())
+
+
+def test_the_rim_height_follows_a_tilted_ellipse(resolution: SensorResolution) -> None:
+    depth_map = DepthMap(np.zeros((120, 120)), resolution)
+    em = EllipticalModel(depth_map, 20, fit=_tilted_fit())
+    depth_map.map = np.where(em.rim(), 3.0, 0.0)
+    surface = Surface(depth_map, SurfaceType.SIMPLE_CRATER, 20, em, None)
+    assert surface.observables["mean_h_rim"].value == pytest.approx(3.0)
+
+
+def test_the_central_peak_follows_a_tilted_ellipse(resolution: SensorResolution) -> None:
+    depth_map = DepthMap(np.zeros((120, 120)), resolution)
+    em = EllipticalModel(depth_map, 20, fit=_tilted_fit())
+    heights = np.zeros((120, 120))
+    heights[55 + round(35 * np.sin(0.6)), 60 + round(35 * np.cos(0.6))] = 7.0
+    depth_map.map = heights
+    surface = Surface(depth_map, SurfaceType.COMPLEX_CRATER, 20, em, em)
+    assert surface.observables["H_cp"].value == pytest.approx(7.0)

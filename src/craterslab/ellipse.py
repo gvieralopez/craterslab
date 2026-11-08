@@ -13,6 +13,7 @@ from craterslab.sensors import DepthMap
 logger = logging.getLogger(__name__)
 
 MIN_REQ_POINTS = 4
+RIM_TOLERANCE = 0.05
 
 Point = tuple[float, float]
 
@@ -205,3 +206,19 @@ class EllipticalModel:
 
     def params(self) -> tuple[float, float, float, float, float]:
         return self.a, self.b, self.cx, self.cy, self.theta
+
+    def interior(self) -> np.ndarray:
+        interior: np.ndarray = self._equation() <= 1
+        return interior
+
+    def rim(self) -> np.ndarray:
+        rim: np.ndarray = np.isclose(self._equation(), 1, rtol=0, atol=RIM_TOLERANCE)
+        return rim
+
+    def _equation(self) -> np.ndarray:
+        y, x = np.mgrid[: self.dm.y_count, : self.dm.x_count]
+        cos, sin = np.cos(self.theta), np.sin(self.theta)
+        x_hat = cos * (x - self.cx) + sin * (y - self.cy)
+        y_hat = -sin * (x - self.cx) + cos * (y - self.cy)
+        equation: np.ndarray = (x_hat / self.a) ** 2 + (y_hat / self.b) ** 2
+        return equation

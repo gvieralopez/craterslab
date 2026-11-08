@@ -49,8 +49,9 @@ def outer_regions(img: np.ndarray, threshold: float) -> tuple[np.ndarray, int]:
 
 
 def central_regions(regions: np.ndarray, count: int) -> np.ndarray:
-    image_center = tuple((np.asarray(regions.shape) / 2).astype("int32"))
-    max_distance = distance.euclidean(image_center, regions.shape)
+    height, width = regions.shape
+    image_center = (width // 2, height // 2)
+    max_distance = distance.euclidean(image_center, (width, height))
     central = np.zeros(regions.shape, dtype=bool)
     for label in range(1, count + 1):
         region = regions == label
