@@ -1,5 +1,5 @@
-import math
 import logging
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -92,12 +92,8 @@ class Surface:
 
         # calculate the ellipse equation for each point in the grid
         a, b, x0, y0, theta = self.em.params()
-        x_rot = (x - x0) * np.cos(theta) - (y - y0) * np.sin(
-            theta
-        )  # rotate x coordinates
-        y_rot = (x - x0) * np.sin(theta) + (y - y0) * np.cos(
-            theta
-        )  # rotate y coordinates
+        x_rot = (x - x0) * np.cos(theta) - (y - y0) * np.sin(theta)  # rotate x coordinates
+        y_rot = (x - x0) * np.sin(theta) + (y - y0) * np.cos(theta)  # rotate y coordinates
         return ((x_rot) ** 2 / a**2) + ((y_rot) ** 2 / b**2)
 
     def _ellipse_perimeter(self) -> np.ndarray[bool]:
@@ -131,18 +127,18 @@ class Surface:
         h_max, h_min = self._mean_h_rim(), self._d_exc()
         inner_values = self.dm.map[self._ellipse_content()] - h_min
         positive_sum = np.sum(inner_values[inner_values <= h_max - h_min])
-        return positive_sum * self.dm.x_res * self.dm.y_res 
+        return positive_sum * self.dm.x_res * self.dm.y_res
 
     def _H_cp(self) -> float:
         points_inside_ellipse = self._inner_z_values()
         max_val = np.max(points_inside_ellipse) * self.dm.z_res
         return max_val - self._d_exc()
-    
+
     def _V_cp(self) -> float:
         points_inside_ellipse = self._inner_z_values() * self.dm.z_res
-        points_inside_ellipse -=  np.min(points_inside_ellipse)
+        points_inside_ellipse -= np.min(points_inside_ellipse)
         total_sum = np.sum(points_inside_ellipse)
-        return total_sum * self.dm.x_res * self.dm.y_res   
+        return total_sum * self.dm.x_res * self.dm.y_res
 
     def _V_ex(self) -> float:
         inner_values = self.dm.map[self._ellipse_content()]
@@ -153,7 +149,7 @@ class Surface:
         val = abs(self._d_exc()) + abs(self._mean_h_rim())
         units = self.dm.sensor.scale
         return Observable("Apparent Depth", "d_max", val, units)
-    
+
     def d_exc(self) -> Observable:
         val = self._d_exc()
         units = self.dm.sensor.scale

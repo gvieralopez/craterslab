@@ -14,7 +14,6 @@ from craterslab.classification import (
 )
 from craterslab.sensors import DepthMap
 
-
 DATA_PATH = Path("examples/data")
 
 NUM_EPOCHS = 10
@@ -26,22 +25,10 @@ COMPLEX_INDICIES = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 2
 
 # Define the categories and their corresponding file names and ids
 categories = {
-    "empty": {
-        "files": [f'plane_{i}.npz' for i in range(1, 17)],
-        "id": 0,
-    },
-    "simple_craters": {
-        "files": [f'fluidized_{i}.npz' for i in SIMPLE_INDICIES],
-        "id": 1,
-    },
-    "complex_craters": {
-        "files": [f'fluidized_{i}.npz' for i in COMPLEX_INDICIES],
-        "id": 2,
-    },
-    "sand_mounds": {
-        "files": [f'compacted_{i}.npz' for i in range(1, 25)],
-        "id": 3,
-    },
+    "empty": {"files": [f"plane_{i}.npz" for i in range(1, 17)], "id": 0},
+    "simple_craters": {"files": [f"fluidized_{i}.npz" for i in SIMPLE_INDICIES], "id": 1},
+    "complex_craters": {"files": [f"fluidized_{i}.npz" for i in COMPLEX_INDICIES], "id": 2},
+    "sand_mounds": {"files": [f"compacted_{i}.npz" for i in range(1, 25)], "id": 3},
 }
 
 

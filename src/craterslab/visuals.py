@@ -1,8 +1,8 @@
 import logging
-import numpy as np
-import matplotlib
-# matplotlib.use("TkAgg")
 
+import numpy as np
+
+# matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, pathpatch_2d_to_3d
 
@@ -58,22 +58,11 @@ def plot_3D(
         z1, z2 = profile.z_bounds
         dz = 0.25 * abs(z2 - z1)
         z1p, z2p = z1 - dz, z2 + dz
-        points = [
-            (x1, y1, z1p),
-            (x1, y1, z2p),
-            (x2, y2, z2p),
-            (x2, y2, z1p),
-        ]
-        ax.add_collection3d(
-            Poly3DCollection([points], facecolors="tab:brown", alpha=0.6)
-        )
+        points = [(x1, y1, z1p), (x1, y1, z2p), (x2, y2, z2p), (x2, y2, z1p)]
+        ax.add_collection3d(Poly3DCollection([points], facecolors="tab:brown", alpha=0.6))
 
     ax.set_xlabel(
-        f"X[{dm.sensor.scale}]",
-        fontweight="bold",
-        fontsize=15,
-        labelpad=10,
-        loc="center",
+        f"X[{dm.sensor.scale}]", fontweight="bold", fontsize=15, labelpad=10, loc="center"
     )
     ax.set_ylabel(
         f"Y[{dm.sensor.scale}]",
@@ -129,15 +118,9 @@ def plot_profile(profile: Profile, draw_slopes: bool = False, block: bool = Fals
     """
     fig, ax = plt.subplots()  # create figure and axes
     ax.plot(profile.s, profile.h)
-    ax.set_ylabel(
-        f"Depth ({profile.dm.sensor.scale})",
-        labelpad=13,
-        fontsize=20,
-    )
+    ax.set_ylabel(f"Depth ({profile.dm.sensor.scale})", labelpad=13, fontsize=20)
     ax.set_xlabel(
-        f"Distance along the segment ({profile.dm.sensor.scale})",
-        labelpad=13,
-        fontsize=20,
+        f"Distance along the segment ({profile.dm.sensor.scale})", labelpad=13, fontsize=20
     )
     ax.tick_params(axis="x", labelsize=20)
     ax.tick_params(axis="y", labelsize=20)
@@ -154,13 +137,17 @@ def plot_profile(profile: Profile, draw_slopes: bool = False, block: bool = Fals
                 x_bounds, z_bounds = slope_bounds(profile, line_model, i0, i1)
                 ax.plot(x_bounds, z_bounds, color="blue", linestyle="--")
         else:
-            logging.error("Attempt to draw profile slopes failed."
-                          "Make sure you are using the depth map from a crater")
+            logging.error(
+                "Attempt to draw profile slopes failed."
+                "Make sure you are using the depth map from a crater"
+            )
     ax.grid()
     plt.show(block=block)
 
 
-def slope_bounds(profile: Profile, line_model: np.poly1d, index_0: int, index_1: int) -> tuple[tuple[float,float], tuple[float,float]]:
+def slope_bounds(
+    profile: Profile, line_model: np.poly1d, index_0: int, index_1: int
+) -> tuple[tuple[float, float], tuple[float, float]]:
     x = [profile.s[index_0], profile.s[index_1]]
     if line_model:
         z = [line_model(v) for v in x]

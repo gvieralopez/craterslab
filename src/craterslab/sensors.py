@@ -21,7 +21,7 @@ class SensorResolution:
     scale: str = "mm"
 
     def __post_init__(self) -> None:
-        if not self.scale in VALID_SCALES:
+        if self.scale not in VALID_SCALES:
             raise ValueError("Unknown scale factor")
 
     def xyz(self) -> tuple[float, float, float]:
@@ -129,17 +129,20 @@ class DepthMap:
     def kinect_driver_available() -> bool:
         try:
             from libkinect2 import Kinect2
+
             return True
         except ModuleNotFoundError:
             logging.error(
-                'Kinect2 driver is not installed, To install it run: pip install https://github.com/sshh12/LibKinect2/releases/download/v0.1.0/libkinect2-0.1.0.tar.gz')
+                "Kinect2 driver is not installed, To install it run: pip install https://github.com/sshh12/LibKinect2/releases/download/v0.1.0/libkinect2-0.1.0.tar.gz"
+            )
             return False
 
     @staticmethod
     def _get_kinect_depthmap(average_on: int) -> np.ndarray:
         # Init Kinect2 w/2 sensors
         from libkinect2 import Kinect2
-        kinect = Kinect2(use_sensors=['depth'])
+
+        kinect = Kinect2(use_sensors=["depth"])
         kinect.connect()
         kinect.wait_for_worker()
         _, depth_map = next(kinect.iter_frames())
@@ -164,9 +167,7 @@ class DepthMap:
         raise NotImplementedError
 
     @staticmethod
-    def _from_mat_file(
-        file_name: str, data_folder: str, variable_name: str | None
-    ) -> np.ndarray:
+    def _from_mat_file(file_name: str, data_folder: str, variable_name: str | None) -> np.ndarray:
         # Load the .mat file
         file_path = pathlib.Path(data_folder, file_name)
         mat_contents = scipy.io.loadmat(file_path)
@@ -227,8 +228,6 @@ class DepthMap:
     @classmethod
     def load(cls, path: pathlib.Path | str) -> "DepthMap":
         with np.load(path) as data:
-            sensor = SensorResolution(
-                data["xres"], data["yres"], data["zres"], data["scale"]
-            )
+            sensor = SensorResolution(data["xres"], data["yres"], data["zres"], data["scale"])
             dm = data["depthmap"]
             return DepthMap(dm, sensor)

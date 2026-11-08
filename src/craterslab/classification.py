@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import keras
 import numpy as np
-import keras
+
 
 class SurfaceType(Enum):
     UNKNOWN = 0
@@ -25,11 +25,7 @@ CACHE_PATH = str(Path(__file__).parent.resolve() / "craterslab.weights.h5")
 def get_raw_model() -> keras.Sequential:
     # Build a CNN
     model = keras.Sequential()
-    model.add(
-        keras.layers.Conv2D(
-            32, (3, 3), activation="relu", input_shape=(IM_SIZE, IM_SIZE, 1)
-        )
-    )
+    model.add(keras.layers.Conv2D(32, (3, 3), activation="relu", input_shape=(IM_SIZE, IM_SIZE, 1)))
     model.add(keras.layers.MaxPooling2D((2, 2)))
     model.add(keras.layers.Conv2D(64, (3, 3), activation="relu"))
     model.add(keras.layers.MaxPooling2D((2, 2)))
@@ -37,6 +33,7 @@ def get_raw_model() -> keras.Sequential:
     model.add(keras.layers.Dense(64, activation="relu"))
     model.add(keras.layers.Dense(NUM_CLASSES, activation="softmax"))
     return model
+
 
 def get_untrained_model(lr=0.001) -> keras.Sequential:
     model = get_raw_model()

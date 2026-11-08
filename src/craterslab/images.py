@@ -36,9 +36,7 @@ def select_best_countour(img: np.ndarray, contours: np.ndarray) -> np.ndarray:
             contour_center = (center_X, center_Y)
 
             # calculate distance to image_center
-            distances_to_center = (
-                distance.euclidean(image_center, contour_center)
-            ) / max_distance
+            distances_to_center = (distance.euclidean(image_center, contour_center)) / max_distance
 
             # save to a list of dictionaries
             valid_contours.append(
@@ -49,17 +47,13 @@ def select_best_countour(img: np.ndarray, contours: np.ndarray) -> np.ndarray:
                 }
             )
 
-    central_contours = [
-        c["contour"] for c in valid_contours if c["distance_to_center"] < 0.5
-    ]
+    central_contours = [c["contour"] for c in valid_contours if c["distance_to_center"] < 0.5]
 
     # Concatenate all contours
     return np.concatenate(central_contours)
 
 
-def compute_bounding_box(
-    img: np.ndarray, threshold: float
-) -> tuple[int, int, int, int]:
+def compute_bounding_box(img: np.ndarray, threshold: float) -> tuple[int, int, int, int]:
     """
     Compute the bounding box of an image for the region in which pixels are
     |p| > threshold

@@ -13,10 +13,7 @@ MIN_REQ_POINTS = 4
 
 
 def fit_elipse(
-    x: np.ndarray,
-    y: np.ndarray,
-    xrange: tuple[float, float],
-    yrange: tuple[float, float],
+    x: np.ndarray, y: np.ndarray, xrange: tuple[float, float], yrange: tuple[float, float]
 ) -> tuple[float, float, float, float, float]:
     # Define the objective function for fitting the ellipse
     def objective(
@@ -72,9 +69,7 @@ class EllipticalModel:
         if not points % 2 == 0:
             raise ValueError("The value of points needs to be even")
         if points < MIN_REQ_POINTS:
-            raise ValueError(
-                f"The value of points needs to be greater than {MIN_REQ_POINTS}"
-            )
+            raise ValueError(f"The value of points needs to be greater than {MIN_REQ_POINTS}")
 
         self.dm = depth_map
         self.points = points
@@ -87,9 +82,7 @@ class EllipticalModel:
         bounds = self._compute_bounds(points)
         self.landmarks = self._compute_landmarks(bounds, inner)
 
-    def _compute_bounds(
-        self, points: int
-    ) -> list[tuple[tuple[int, int], tuple[int, int]]]:
+    def _compute_bounds(self, points: int) -> list[tuple[tuple[int, int], tuple[int, int]]]:
         center_y, center_x = self.dm.y_count // 2, self.dm.x_count // 2
         angle_diff = 2 * np.pi / points
         return [
@@ -157,13 +150,9 @@ class EllipticalModel:
 
     def _validate_landmark_points(self) -> bool:
         if len(self.landmarks) < self.points:
-            logging.warning(
-                f"Only {len(self.landmarks)}/{self.points} landmarks were computed"
-            )
+            logging.warning(f"Only {len(self.landmarks)}/{self.points} landmarks were computed")
             if len(self.landmarks) < MIN_REQ_POINTS:
-                logging.error(
-                    "Not sufficient landmarks for fitting the elliptical model"
-                )
+                logging.error("Not sufficient landmarks for fitting the elliptical model")
                 return False
             else:
                 logging.warning("Trying to fit the elliptical model anyways")

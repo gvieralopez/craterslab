@@ -1,5 +1,5 @@
-import math
 import logging
+import math
 
 import numpy as np
 import scipy
@@ -117,12 +117,8 @@ class Profile:
         self.tc = next(filter(lambda i: third < i <= 2 * third, indices), -1)
         self.t2 = next(filter(lambda i: i > 2 * third, indices), -1)
 
-        self.b1 = next(
-            filter(lambda i: i <= len(self) // 2 and i > self.t1, sorted_indices), -1
-        )
-        self.b2 = next(
-            filter(lambda i: i > len(self) // 2 and i < self.t2, sorted_indices), -1
-        )
+        self.b1 = next(filter(lambda i: i <= len(self) // 2 and i > self.t1, sorted_indices), -1)
+        self.b2 = next(filter(lambda i: i > len(self) // 2 and i < self.t2, sorted_indices), -1)
 
         # If b1 or b2 have not been found
         if self.b1 == -1 or self.b2 == -1:
@@ -131,16 +127,12 @@ class Profile:
                 self.b1 = self.b2 if self.b1 == -1 else self.b1
                 self.b2 = self.b1 if self.b2 == -1 else self.b2
 
-    def slopes(
-        self, t1: int = -1, b1: int = -1, t2: int = -1, b2: int = -1
-    ) -> tuple[float, float]:
+    def slopes(self, t1: int = -1, b1: int = -1, t2: int = -1, b2: int = -1) -> tuple[float, float]:
         self.set_landmark_indices(t1, b1, t2, b2)
         self.l1, self.l2 = self._compute_linear_fit()
         return self.l1[0], self.l2[0]
 
-    def set_landmark_indices(
-        self, t1: int = -1, b1: int = -1, t2: int = -1, b2: int = -1
-    ):
+    def set_landmark_indices(self, t1: int = -1, b1: int = -1, t2: int = -1, b2: int = -1):
         self.compute_extrema()
         self.t1 = t1 if t1 != -1 else self.t1
         self.t2 = t2 if t2 != -1 else self.t2
@@ -151,9 +143,7 @@ class Profile:
         """
         Compute the lines that better fits the crater walls
         """
-        return self._compute_line(self.t1, self.b1), self._compute_line(
-            self.b2, self.t2
-        )
+        return self._compute_line(self.t1, self.b1), self._compute_line(self.b2, self.t2)
 
     def _compute_line(self, i: int, j: int) -> np.array:
         """
