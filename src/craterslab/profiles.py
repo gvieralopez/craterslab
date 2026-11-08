@@ -1,12 +1,9 @@
-import logging
 import math
 
 import numpy as np
 import scipy
 
-from craterslab.sensors import DepthMap
-
-logger = logging.getLogger(__name__)
+from craterslab.depth_map import DepthMap
 
 
 class Profile:
@@ -107,56 +104,3 @@ class Profile:
     def index2xyz(self, index: int) -> tuple[float, float, float]:
         xi, yi, zi = self._index2xyz(index)
         return xi * self.s_res, yi * self.s_res, zi * self.h_res
-
-    def compute_extrema(self) -> None:
-        dhds = np.gradient(self._h, self._s)
-        extrema_indices = np.where(np.diff(np.sign(dhds)))[0]
-        sorted_indices = extrema_indices[np.argsort(self.h[extrema_indices])]
-
-        indices = sorted_indices[::-1]
-        third = len(self) // 3
-        self.t1 = next(filter(lambda i: i <= third, indices), -1)
-        self.tc = next(filter(lambda i: third < i <= 2 * third, indices), -1)
-        self.t2 = next(filter(lambda i: i > 2 * third, indices), -1)
-
-        self.b1 = next(filter(lambda i: i <= len(self) // 2 and i > self.t1, sorted_indices), -1)
-        self.b2 = next(filter(lambda i: i > len(self) // 2 and i < self.t2, sorted_indices), -1)
-
-        # If only one of b1 and b2 has been found, use it for both
-        if (self.b1 == -1 or self.b2 == -1) and self.b1 != self.b2:
-            self.b1 = self.b2 if self.b1 == -1 else self.b1
-            self.b2 = self.b1 if self.b2 == -1 else self.b2
-
-    def slopes(self, t1: int = -1, b1: int = -1, t2: int = -1, b2: int = -1) -> tuple[float, float]:
-        self.set_landmark_indices(t1, b1, t2, b2)
-        self.l1, self.l2 = self._compute_linear_fit()
-        return self.l1[0], self.l2[0]
-
-    def set_landmark_indices(self, t1: int = -1, b1: int = -1, t2: int = -1, b2: int = -1) -> None:
-        self.compute_extrema()
-        self.t1 = t1 if t1 != -1 else self.t1
-        self.t2 = t2 if t2 != -1 else self.t2
-        self.b1 = b1 if b1 != -1 else self.b1
-        self.b2 = b2 if b2 != -1 else self.b2
-
-    def _compute_linear_fit(self) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Compute the lines that better fits the crater walls
-        """
-        return self._compute_line(self.t1, self.b1), self._compute_line(self.b2, self.t2)
-
-    def _compute_line(self, i: int, j: int) -> np.ndarray:
-        """
-        Compute the line that better fits the profile from i to j
-        """
-        if None in (i, j):
-            raise ValueError("Invalid indices for slope calculation.")
-        i, j = (i, j) if i < j else (j, i)
-        x_vals, y_vals = self.s[i:j], self.h[i:j]
-        if x_vals.size <= 1:
-            raise ValueError("Not enough points for slope calculation.")
-        try:
-            return np.polyfit(x_vals, y_vals, 1)
-        except SystemError:
-            logger.error("Error computing slopes")
-            raise

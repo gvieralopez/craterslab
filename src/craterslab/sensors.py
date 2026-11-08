@@ -1,246 +1,78 @@
-import importlib.util
-import logging
-import pathlib
-from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
-import scipy.io
-from scipy.ndimage import gaussian_filter
 
-from craterslab.images import compute_bounding_box, crop_img
+from craterslab.depth_map import DepthMap, SensorResolution
 
-logger = logging.getLogger(__name__)
-
-VALID_SCALES = ["mm", "cm", "dm", "m", "km"]
-AUTO_CROP_THRESHOLD = 1.5
-AUTO_CROP_PADDING = 10
+KINECT_INSTALL = (
+    "pip install https://github.com/sshh12/LibKinect2/releases/download/v0.1.0/"
+    "libkinect2-0.1.0.tar.gz"
+)
+FRAME_ATTEMPTS_PER_FRAME = 10
 
 
-@dataclass
-class SensorResolution:
-    x: float
-    y: float
-    z: float
-    scale: str = "mm"
+def capture_kinect(resolution: SensorResolution, average_on: int) -> DepthMap:
+    try:
+        from libkinect2 import Kinect2  # noqa: PLC0415
+    except ImportError as error:
+        raise ImportError(f"The Kinect2 driver is not installed: {KINECT_INSTALL}") from error
 
-    def __post_init__(self) -> None:
-        if self.scale not in VALID_SCALES:
-            raise ValueError("Unknown scale factor")
-
-    def xyz(self) -> tuple[float, float, float]:
-        return self.x, self.y, self.z
-
-
-DEFAULT_RESOLUTION = SensorResolution(1.0, 1.0, 1.0)
+    kinect = Kinect2(use_sensors=["depth"])
+    kinect.connect()
+    kinect.wait_for_worker()
+    frames = [np.squeeze(next(kinect.iter_frames())[1]) for _ in range(average_on)]
+    kinect.disconnect()
+    return DepthMap(average_valid_frames(frames), resolution)
 
 
-class DepthMap:
-    def __init__(self, dmap: np.ndarray, resolution: SensorResolution):
-        self.map = dmap
-        self.sensor = resolution
-        self.x_res, self.y_res, self.z_res = resolution.xyz()
+def capture_femto_bolt(resolution: SensorResolution, average_on: int, timeout_ms: int) -> DepthMap:
+    try:
+        import pyorbbecsdk2 as sdk  # noqa: PLC0415
+    except ImportError as error:
+        raise ImportError("The Femto Bolt needs its SDK: pip install pyorbbecsdk2") from error
 
-    def __sub__(self, other: "DepthMap") -> "DepthMap":
-        # Validate the objects compatibility
-        if not isinstance(other, DepthMap):
-            raise TypeError("Cannot subtract non-DepthMap object from DepthMap")
-        if self.map.shape != other.map.shape:
-            raise ValueError("DepthMaps must have the same shape to subtract them")
-        if self.sensor != other.sensor:
-            raise ValueError("DepthMaps must have the same resolution to subtract them")
+    pipeline = sdk.Pipeline()
+    config = sdk.Config()
+    profiles = pipeline.get_stream_profile_list(sdk.OBSensorType.DEPTH_SENSOR)
+    config.enable_stream(profiles.get_default_video_stream_profile())
 
-        # Subtract the data arrays elementwise
-        new_data = self.map - other.map
+    frames: list[np.ndarray] = []
+    pipeline.start(config)
+    try:
+        for _ in range(average_on * FRAME_ATTEMPTS_PER_FRAME):
+            frame_set = pipeline.wait_for_frames(timeout_ms)
+            depth_frame = None if frame_set is None else frame_set.get_depth_frame()
+            if depth_frame is not None:
+                frames.append(_femto_depth_array(depth_frame))
+            if len(frames) == average_on:
+                break
+    finally:
+        pipeline.stop()
+    if len(frames) < average_on:
+        raise TimeoutError(f"The Femto Bolt gave {len(frames)} of {average_on} depth frames")
+    return DepthMap(average_valid_frames(frames), resolution)
 
-        # Create a new DepthMap instance with the subtracted data
-        return DepthMap(new_data, self.sensor)
 
-    def crop(self, bounding_box: tuple[int, int, int, int], padding: int = 0) -> None:
-        self.map = crop_img(self.map, *bounding_box, gap=padding)
+def average_valid_frames(frames: Sequence[np.ndarray]) -> np.ndarray:
+    """Average frames ignoring zeros, the value depth sensors give to invalid pixels."""
+    if not frames:
+        raise ValueError("There are no depth frames to average")
+    stack = np.stack(frames).astype(np.float64)
+    valid = stack > 0
+    count = valid.sum(axis=0)
+    result = np.zeros(stack.shape[1:], dtype=np.float64)
+    np.divide(np.where(valid, stack, 0.0).sum(axis=0), count, out=result, where=count > 0)
+    return result
 
-    def crop_borders(self, ratio: float) -> None:
-        if not 0 < ratio < 1:
-            raise ValueError("The ratio needs to be between 0 and 1")
-        x0, y0 = self.x_count * ratio / 2, self.y_count * ratio / 2
-        left, top, width, height = map(int, [x0, y0, self.x_count - 2 * x0, self.y_count - 2 * y0])
-        self.crop((left, top, width, height))
 
-    def auto_crop(
-        self, threshold: float = AUTO_CROP_THRESHOLD, padding: int = AUTO_CROP_PADDING
-    ) -> None:
-        bb = compute_bounding_box(self.map, threshold=threshold)
-        self.crop(bb, padding)
-
-    @property
-    def heights(self) -> np.ndarray:
-        return self.map * self.z_res
-
-    @property
-    def x_count(self) -> int:
-        return int(self.map.shape[1])
-
-    @property
-    def y_count(self) -> int:
-        return int(self.map.shape[0])
-
-    @classmethod
-    def from_mat_file(
-        cls,
-        file_name: str,
-        data_folder: str = "data",
-        max_samples: int = -1,
-        average: bool = True,
-        variable_name: str | None = None,
-        resolution: SensorResolution = DEFAULT_RESOLUTION,
-    ) -> "DepthMap":
-        # Load depth map from file
-        content = cls._from_mat_file(file_name, data_folder, variable_name)
-
-        # Reduce the amount of raw data used
-        if max_samples != -1:
-            content = content[:, :, :, :max_samples]
-
-        # Average the last dimension to obtain an image-like numpy array
-        if average:
-            content = np.mean(content, axis=-1).squeeze()
-
-        return cls(content, resolution)
-
-    @classmethod
-    def from_xyz_file(
-        cls,
-        file_name: str,
-        data_folder: str = "data",
-        rescaled_with: tuple[float, float, float] | None = None,
-        z_shift: int | float = 0,
-        resolution: SensorResolution = DEFAULT_RESOLUTION,
-    ) -> "DepthMap":
-        # Load cloud point from file
-        content = cls._from_xyz_file(file_name, data_folder)
-
-        if z_shift != 0:
-            content[:, 2] += z_shift
-
-        if rescaled_with is not None:
-            content = cls._rescale(content, rescaled_with)
-
-        matrix = cls._point_cloud_to_depth_map(content, resolution)
-
-        return cls(matrix, resolution)
-
-    @classmethod
-    def from_image_file(cls, image: np.ndarray) -> "DepthMap":
-        # Compute depth map from image
-        raise NotImplementedError
-
-    @staticmethod
-    def kinect_driver_available() -> bool:
-        if importlib.util.find_spec("libkinect2") is not None:
-            return True
-        logger.error(
-            "Kinect2 driver is not installed, To install it run: pip install https://github.com/sshh12/LibKinect2/releases/download/v0.1.0/libkinect2-0.1.0.tar.gz"
-        )
-        return False
-
-    @staticmethod
-    def _get_kinect_depthmap(average_on: int) -> np.ndarray:
-        # Init Kinect2 w/2 sensors
-        from libkinect2 import Kinect2  # noqa: PLC0415 (optional, needs the device driver)
-
-        kinect = Kinect2(use_sensors=["depth"])
-        kinect.connect()
-        kinect.wait_for_worker()
-        _, depth_map = next(kinect.iter_frames())
-        if average_on > 1:
-            shape = depth_map.shape[0], depth_map.shape[1], average_on
-            samples = np.zeros(shape, dtype=depth_map.dtype)
-            for i in range(average_on):
-                _, dm = next(kinect.iter_frames())
-                samples[:, :, i] = np.squeeze(dm)
-            depth_map = np.mean(samples, axis=-1)
-        kinect.disconnect()
-
-        result: np.ndarray = np.squeeze(depth_map)
-        return result
-
-    @classmethod
-    def from_kinect_sensor(cls, resolution: SensorResolution, average_on: int = 1) -> "DepthMap":
-        # Check if kinect library is installed
-        if cls.kinect_driver_available():
-            _depth_map = cls._get_kinect_depthmap(average_on)
-            return DepthMap(dmap=_depth_map, resolution=resolution)
-
-        raise NotImplementedError
-
-    @staticmethod
-    def _from_mat_file(file_name: str, data_folder: str, variable_name: str | None) -> np.ndarray:
-        # Load the .mat file
-        file_path = pathlib.Path(data_folder, file_name)
-        mat_contents = scipy.io.loadmat(file_path)
-
-        # Access the desired variable from the .mat file
-        variable_name = variable_name if variable_name else file_name[:-4]
-        content: np.ndarray = mat_contents[variable_name]
-        return content
-
-    @staticmethod
-    def _from_xyz_file(file_name: str, data_folder: str) -> np.ndarray:
-        file_path = pathlib.Path(data_folder, file_name)
-        return np.loadtxt(file_path, skiprows=2)
-
-    @staticmethod
-    def _rescale(array: np.ndarray, scale: tuple[float, float, float]) -> np.ndarray:
-        for i in range(3):
-            if scale[i] != 1:
-                array[:, i] *= scale[i]
-        return array
-
-    @staticmethod
-    def _point_cloud_to_depth_map(
-        point_cloud: np.ndarray, resolution: SensorResolution
-    ) -> np.ndarray:
-        x, y, z = point_cloud.T
-        x_min, x_max = np.min(x), np.max(x)
-        y_min, y_max = np.min(y), np.max(y)
-
-        # Compute target depth map shape
-        cols = int((x_max - x_min) / resolution.x)
-        rows = int((y_max - y_min) / resolution.y)
-        matrix = np.zeros((rows, cols), dtype=np.float64)
-        point_count = np.zeros((rows, cols), dtype=np.int32)
-
-        # Scale the x and y coordinates to fit the matrix
-        _x = np.clip(np.round((x - x_min) / resolution.x).astype(int), 0, cols - 1)
-        _y = np.clip(np.round((y - y_min) / resolution.y).astype(int), 0, rows - 1)
-
-        # Assign the z values to the corresponding matrix elements
-        for xi, yi, zi in zip(_x, _y, z, strict=True):
-            matrix[yi, xi] += zi
-            point_count[yi, xi] += 1
-
-        # Divide each matrix element by the number of points that were mapped to it
-        result = np.zeros_like(matrix)
-        np.divide(matrix, point_count, out=result, where=point_count != 0)
-
-        smoothed: np.ndarray = gaussian_filter(result, sigma=2)
-        return smoothed
-
-    def to_arrays(self) -> dict[str, Any]:
-        return {
-            "depthmap": self.map,
-            "xres": self.sensor.x,
-            "yres": self.sensor.y,
-            "zres": self.sensor.z,
-            "scale": self.sensor.scale,
-        }
-
-    def save(self, path: pathlib.Path | str) -> None:
-        np.savez(path, **self.to_arrays())
-
-    @classmethod
-    def load(cls, path: pathlib.Path | str) -> "DepthMap":
-        with np.load(path) as data:
-            sensor = SensorResolution(data["xres"], data["yres"], data["zres"], data["scale"])
-            dm = data["depthmap"]
-            return DepthMap(dm, sensor)
+def _femto_depth_array(depth_frame: Any) -> np.ndarray:
+    raw = np.frombuffer(depth_frame.get_data(), dtype=np.uint16)
+    shaped = raw.reshape((depth_frame.get_height(), depth_frame.get_width()))
+    scale = (
+        depth_frame.get_depth_scale()
+        if hasattr(depth_frame, "get_depth_scale")
+        else depth_frame.get_value_scale()
+    )
+    depth: np.ndarray = shaped.astype(np.float64) * float(scale)
+    return depth

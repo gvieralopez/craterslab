@@ -1,9 +1,8 @@
 # Craterslab Example Script No. 4:
 # Compute the diameters from the surfaces found across different depth maps
 
+from craterslab import DepthMap, Surface
 from craterslab.cnn import CNNClassifier
-from craterslab.craters import Surface
-from craterslab.sensors import DepthMap
 
 classifier = CNNClassifier()
 diameters = []

@@ -11,7 +11,7 @@ which can be directly loaded with craterslab as:
 
 .. code-block:: python
 
-   from craterslab.sensors import DepthMap
+   from craterslab import DepthMap
    depth_map = DepthMap.load("fluidized_1.npz")
    depth_map.auto_crop()
 
@@ -25,7 +25,7 @@ can get this kind of visualization as:
 
 .. code-block:: python
 
-   from craterslab.visuals import plot_2D
+   from craterslab import plot_2D
    plot_2D(depth_map, block=True)
 
 .. figure:: /images/2a.png
@@ -40,7 +40,7 @@ Similarly, we can produce a Three-dimensional plot with:
 
 .. code-block:: python
 
-   from craterslab.visuals import plot_3D
+   from craterslab import plot_3D
    plot_3D(depth_map, block=True)
 
 .. figure:: /images/2b.png
@@ -60,7 +60,7 @@ an elliptical model for a depth map using 20 points:
 
 .. code-block:: python
 
-   from craterslab.ellipse import EllipticalModel
+   from craterslab import EllipticalModel
    em = EllipticalModel(depth_map, 20)
 
 Now, we can include this model into the 2D and 3D plots shown before by simply
@@ -69,7 +69,7 @@ passing the model as an optional argument:
 
 .. code-block:: python
 
-   from craterslab.visuals import plot_2D, plot_3D
+   from craterslab import plot_2D, plot_3D
    plot_2D(depth_map, ellipse=em)
    plot_3D(depth_map, ellipse=em, block=True)
 
@@ -93,14 +93,14 @@ segment:
 
 .. code-block:: python
 
-   from craterslab.profiles import Profile
+   from craterslab import Profile
    p = Profile(depth_map, (0,0), (40,40))
 
 Then, we can inspect the profile by:
 
 .. code-block:: python
 
-   from craterslab.visuals import plot_profile
+   from craterslab import plot_profile
    plot_profile(p, block=True)
 
 That will show the computed ellipse in both plots, resulting in:
@@ -117,7 +117,7 @@ the two- and three-dimensional plots:
 
 .. code-block:: python
 
-   from craterslab.visuals import plot_2D, plot_3D
+   from craterslab import plot_2D, plot_3D
    plot_2D(depth_map, profile=p)
    plot_3D(depth_map, profile=p, block=True)
 

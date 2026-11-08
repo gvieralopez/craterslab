@@ -2,9 +2,7 @@
 # Load a single depth map from file, compute an elliptical model and plot
 # the depth map together with the model and its max profile
 
-from craterslab.ellipse import EllipticalModel
-from craterslab.sensors import DepthMap
-from craterslab.visuals import plot_2D, plot_3D, plot_profile
+from craterslab import DepthMap, EllipticalModel, plot_2D, plot_3D, plot_profile
 
 depth_map = DepthMap.load("examples/data/fluidized_1.npz")
 depth_map.auto_crop()

@@ -7,12 +7,14 @@ import numpy as np
 from matplotlib.patches import Ellipse
 from scipy.optimize import Bounds, minimize
 
+from craterslab.depth_map import DepthMap
+from craterslab.landmarks import find_landmarks
 from craterslab.profiles import Profile
-from craterslab.sensors import DepthMap
 
 logger = logging.getLogger(__name__)
 
 MIN_REQ_POINTS = 4
+RIM_TOLERANCE = 0.05
 
 Point = tuple[float, float]
 
@@ -154,11 +156,11 @@ class EllipticalModel:
 
     def _compute_complementary_landmarks(self, bound: Sequence[Point], inner: bool) -> list[Point]:
         p = Profile(self.dm, bound[0], bound[1])
-        p.compute_extrema()
-        key_vals = [p.b1, p.b2] if inner else [p.t1, p.t2]
+        found = find_landmarks(p)
+        key_vals = [found.b1, found.b2] if inner else [found.t1, found.t2]
         lm = []
         for i in key_vals:
-            if i == -1:
+            if i is None:
                 logger.error("Cannot compute a landmark")
                 continue
             x, y, _ = p._index2xyz(i)
@@ -205,3 +207,19 @@ class EllipticalModel:
 
     def params(self) -> tuple[float, float, float, float, float]:
         return self.a, self.b, self.cx, self.cy, self.theta
+
+    def interior(self) -> np.ndarray:
+        interior: np.ndarray = self._equation() <= 1
+        return interior
+
+    def rim(self) -> np.ndarray:
+        rim: np.ndarray = np.isclose(self._equation(), 1, rtol=0, atol=RIM_TOLERANCE)
+        return rim
+
+    def _equation(self) -> np.ndarray:
+        y, x = np.mgrid[: self.dm.y_count, : self.dm.x_count]
+        cos, sin = np.cos(self.theta), np.sin(self.theta)
+        x_hat = cos * (x - self.cx) + sin * (y - self.cy)
+        y_hat = -sin * (x - self.cx) + cos * (y - self.cy)
+        equation: np.ndarray = (x_hat / self.a) ** 2 + (y_hat / self.b) ** 2
+        return equation

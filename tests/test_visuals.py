@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 from matplotlib import pyplot as plt
 
+from craterslab.depth_map import DepthMap, SensorResolution
 from craterslab.ellipse import EllipseVisualConfig, EllipticalModel
 from craterslab.profiles import Profile
-from craterslab.sensors import DepthMap
 from craterslab.visuals import plot_2D, plot_3D, plot_profile, slope_bounds
 
 
@@ -48,17 +48,14 @@ def test_plot_profile(crater: DepthMap) -> None:
 
 def test_plot_profile_with_slopes(crater: DepthMap) -> None:
     profile = Profile(crater, (0, 50), (100, 50))
-    profile.compute_extrema()
     plot_profile(profile, draw_slopes=True)
     assert len(plt.gca().lines) == 3
 
 
 def test_plot_profile_reports_invalid_slopes(
-    crater: DepthMap, caplog: pytest.LogCaptureFixture
+    resolution: SensorResolution, caplog: pytest.LogCaptureFixture
 ) -> None:
-    profile = Profile(crater, (0, 50), (100, 50))
-    profile.compute_extrema()
-    profile.t1 = 0
+    profile = Profile(DepthMap(np.zeros((30, 30)), resolution), (0, 15), (29, 15))
     with caplog.at_level(logging.ERROR):
         plot_profile(profile, draw_slopes=True)
     assert "slopes failed" in caplog.text

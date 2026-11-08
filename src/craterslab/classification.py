@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Protocol
 
-from craterslab.sensors import DepthMap
+from craterslab.depth_map import DepthMap
 
 
 class SurfaceType(Enum):

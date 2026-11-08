@@ -12,7 +12,7 @@ which can be directly loaded with craterslab as:
 
 .. code-block:: python
 
-   from craterslab.sensors import DepthMap
+   from craterslab import DepthMap
    depth_map = DepthMap.load("fluidized_1.npz")
    depth_map.auto_crop()
 
@@ -25,8 +25,8 @@ surface contains, you can say so:
 
 .. code-block:: python
 
-   from craterslab.classification import SurfaceType
-   from craterslab.craters import Surface
+   from craterslab import SurfaceType
+   from craterslab import Surface
    s = Surface.from_depth_map(depth_map, SurfaceType.SIMPLE_CRATER)
 
 Without a type, the surface is Unknown. An Unknown surface has no elliptical 
@@ -82,11 +82,16 @@ crater. We can check the value of its observables by:
    Apparent Depth (d_max): -15.91 mm
    Eccentricity (epsilon): 0.38 
    Diameter (D): 99.19 mm
-   Maximum heigh (H_m): 3.00 mm
-   Mean Heigh over the rim (mean_h_rim): 1.61 mm
+   Maximum height (H_m): 3.00 mm
+   Mean Height over the rim (mean_h_rim): 1.61 mm
    Concavity Volume (V_in): 65334.24 mm³
    Excavated Volume (V_ex): 27954.53 mm³
    """
+
+.. note::
+   The height and volume of the central peak (``H_cp`` and ``V_cp``) need an 
+   inner ellipse inside the rim. When the fit gives one larger than the rim, 
+   they are left out and a warning is logged, instead of reporting a wrong value.
 
 Saving and loading
 ------------------
@@ -103,3 +108,16 @@ machine:
 The file can also be read as a plain depth map with ``DepthMap.load``. In the 
 other direction, ``Surface.load`` gives an Unknown surface for a file saved from
 a depth map.
+
+Exporting to CSV
+----------------
+
+The observables of many surfaces can be written to one CSV file, with one row 
+per surface. Observables that do not apply to a surface are left empty. A 
+profile can be exported too:
+
+.. code-block:: python
+
+   from craterslab import write_observables_csv, write_profile_csv
+   write_observables_csv("observables.csv", {"crater_1": s})
+   write_profile_csv("profile.csv", s.max_profile)

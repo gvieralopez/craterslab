@@ -3,8 +3,8 @@ import logging
 import numpy as np
 import pytest
 
+from craterslab.depth_map import DepthMap, SensorResolution
 from craterslab.ellipse import EllipseFit, EllipseVisualConfig, EllipticalModel, fit_elipse
-from craterslab.sensors import DepthMap, SensorResolution
 
 
 def _ellipse_points(a: float, b: float, cx: float, cy: float) -> tuple[np.ndarray, np.ndarray]:
@@ -78,3 +78,39 @@ def test_a_given_fit_is_used_as_it_is(crater: DepthMap) -> None:
     model = EllipticalModel(crater, 20, fit=fit)
     assert model.params() == (5.0, 4.0, 50.0, 51.0, 0.1)
     assert model.landmarks == [(1.0, 2.0)]
+
+
+def _tilted(theta: float, resolution: SensorResolution) -> EllipticalModel:
+    depth_map = DepthMap(np.zeros((120, 120)), resolution)
+    return EllipticalModel(
+        depth_map, 20, fit=EllipseFit(40.0, 18.0, 60.0, 55.0, theta, [(0.0, 0.0)])
+    )
+
+
+@pytest.mark.parametrize("theta", [0.0, 0.3, 0.6, 1.0, 1.4, 2.5])
+def test_the_interior_follows_the_tilt(resolution: SensorResolution, theta: float) -> None:
+    y, x = np.mgrid[:120, :120]
+    along = np.cos(theta) * (x - 60) + np.sin(theta) * (y - 55)
+    across = -np.sin(theta) * (x - 60) + np.cos(theta) * (y - 55)
+    expected = (along / 40) ** 2 + (across / 18) ** 2 <= 1
+    assert np.array_equal(_tilted(theta, resolution).interior(), expected)
+
+
+def test_the_major_axis_tilts_towards_positive_y(resolution: SensorResolution) -> None:
+    theta = 0.6
+    interior = _tilted(theta, resolution).interior()
+    on_axis = 60 + round(35 * np.cos(theta)), 55 + round(35 * np.sin(theta))
+    mirrored = 60 + round(35 * np.cos(theta)), 55 - round(35 * np.sin(theta))
+    assert interior[on_axis[1], on_axis[0]]
+    assert not interior[mirrored[1], mirrored[0]]
+
+
+def test_the_rim_is_the_edge_of_the_interior(resolution: SensorResolution) -> None:
+    model = _tilted(0.6, resolution)
+    rim = model.rim()
+    rows, cols = np.nonzero(rim)
+    assert rows.size > 0
+    assert not rim[55, 60]
+    x_hat = np.cos(0.6) * (cols - 60) + np.sin(0.6) * (rows - 55)
+    y_hat = -np.sin(0.6) * (cols - 60) + np.cos(0.6) * (rows - 55)
+    assert (x_hat / 40) ** 2 + (y_hat / 18) ** 2 == pytest.approx(np.ones(rows.size), abs=0.05)

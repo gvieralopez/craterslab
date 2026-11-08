@@ -69,6 +69,16 @@ These will create an isolated virtual environment with craterslab installed on i
 
 ## Usage
 
+```python
+from craterslab import DepthMap, Surface, SurfaceType
+
+depth_map = DepthMap.load("examples/data/fluidized_1.npz")
+depth_map.auto_crop()
+
+crater = Surface.from_depth_map(depth_map, SurfaceType.SIMPLE_CRATER)
+print(crater)
+```
+
 You can find some examples on how to use the library in this repository:
 
 ```

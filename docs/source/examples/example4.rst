@@ -22,10 +22,11 @@ Import all the dependencies:
 
 .. code-block:: python
 
-   from craterslab.sensors import DepthMap, SensorResolution
-   from craterslab.visuals import plot_2D, plot_3D, plot_profile
+   from craterslab import SensorResolution
+   from craterslab import read_xyz
+   from craterslab import plot_2D, plot_3D, plot_profile
    from craterslab.cnn import CNNClassifier
-   from craterslab.craters import Surface
+   from craterslab import Surface
 
 
 .. _Loading Data 1:
@@ -58,7 +59,7 @@ Then, we can use this resolution to create a DepthMap as:
 
 .. code-block:: python
 
-   depth_map = DepthMap.from_xyz_file("king.xyz", resolution=data_resolution)
+   depth_map = read_xyz("king.xyz", data_resolution)
    depth_map.crop_borders(ratio=0.25)
 
 The last line is optional and it is only meant to remove the borders from the 
@@ -90,8 +91,8 @@ printing the surface object:
    Apparent Depth (d_max): -2280.23 m
    Eccentricity (epsilon): 0.13 
    Diameter (D): 78188.58 m
-   Maximum heigh (H_m): 3063.19 m
-   Mean Heigh over the rim (mean_h_rim): 1350.90 m
+   Maximum height (H_m): 3063.19 m
+   Mean Height over the rim (mean_h_rim): 1350.90 m
    Concavity Volume (V_in): 5392654283113.74 m³
    Excavated Volume (V_ex): 4729292363304.89 m³
    Excess Volume (V_exc): 4664067973505.89 m³

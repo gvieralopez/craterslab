@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 
 from craterslab.classification import SurfaceType
-from craterslab.sensors import DepthMap
+from craterslab.depth_map import DepthMap
 
 try:
     import cv2

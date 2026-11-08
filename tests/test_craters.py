@@ -4,10 +4,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from craterslab import craters
 from craterslab.classification import SurfaceType
 from craterslab.craters import Observable, Surface
-from craterslab.ellipse import EllipticalModel
-from craterslab.sensors import DepthMap, SensorResolution
+from craterslab.depth_map import DepthMap, SensorResolution
+from craterslab.ellipse import EllipseFit, EllipticalModel
 
 COMMON = {"d_max", "d_exc", "H_m", "V_exc"}
 CRATER = COMMON | {"epsilon", "D", "mean_h_rim", "V_in", "V_ex"}
@@ -50,7 +51,7 @@ def test_a_flat_surface_cannot_get_a_known_type(resolution: SensorResolution) ->
 
 def test_values_of_an_unknown_surface_need_a_type(crater: DepthMap) -> None:
     with pytest.raises(ValueError, match="known type"):
-        Surface.from_depth_map(crater).D()
+        craters._diameter(Surface.from_depth_map(crater))
 
 
 @pytest.mark.parametrize(
@@ -173,12 +174,12 @@ def _rescaled(dm: DepthMap, factor: float) -> DepthMap:
     return DepthMap(dm.map * factor, sensor)
 
 
-@pytest.mark.parametrize("name", ["_V_in", "_V_ex", "_V_cp", "_H_cp", "_mean_h_rim", "_d_exc"])
-def test_values_do_not_depend_on_the_z_resolution(crater: DepthMap, name: str) -> None:
+@pytest.mark.parametrize("symbol", sorted(COMPLEX))
+def test_values_do_not_depend_on_the_z_resolution(crater: DepthMap, symbol: str) -> None:
     surface = Surface.from_depth_map(crater, SurfaceType.COMPLEX_CRATER)
-    before = getattr(surface, name)()
+    before = surface.observables[symbol].value
     surface.dm = _rescaled(crater, 2.0)
-    assert getattr(surface, name)() == pytest.approx(before)
+    assert surface.compute_observables()[symbol].value == pytest.approx(before)
 
 
 def test_excess_volume_uses_all_three_resolutions(crater: DepthMap) -> None:
@@ -186,8 +187,117 @@ def test_excess_volume_uses_all_three_resolutions(crater: DepthMap) -> None:
     block = crater.map * 0
     block[:4, :5] = 8.0
     surface.dm = DepthMap(block, SensorResolution(2.0, 3.0, 0.5, "cm"))
-    assert surface.V_exc().value == pytest.approx(20 * 4.0 * 6.0)
+    assert surface.compute_observables()["V_exc"].value == pytest.approx(20 * 4.0 * 6.0)
 
 
 def test_maximum_height_has_its_own_symbol(crater: DepthMap) -> None:
-    assert Surface.from_depth_map(crater, SurfaceType.SIMPLE_CRATER).H_m().symbol == "H_m"
+    surface = Surface.from_depth_map(crater, SurfaceType.SIMPLE_CRATER)
+    assert surface.observables["H_m"].symbol == "H_m"
+
+
+def test_every_observable_is_defined_once() -> None:
+    symbols = [definition.symbol for definition in craters.OBSERVABLES]
+    assert len(symbols) == len(set(symbols))
+    assert set(symbols) == COMPLEX
+
+
+@pytest.mark.parametrize(("symbol", "units"), [("epsilon", ""), ("D", "mm"), ("V_in", "mm³")])
+def test_units_follow_the_sensor_scale(crater: DepthMap, symbol: str, units: str) -> None:
+    surface = Surface.from_depth_map(crater, SurfaceType.SIMPLE_CRATER)
+    assert surface.observables[symbol].units == units
+
+
+def test_observables_are_listed_in_table_order(crater: DepthMap) -> None:
+    surface = Surface.from_depth_map(crater, SurfaceType.COMPLEX_CRATER)
+    assert list(surface.observables) == [d.symbol for d in craters.OBSERVABLES]
+
+
+def _tilted_fit() -> EllipseFit:
+    return EllipseFit(40.0, 18.0, 60.0, 55.0, 0.6, [(0.0, 0.0)])
+
+
+def test_volumes_follow_a_tilted_ellipse(resolution: SensorResolution) -> None:
+    depth_map = DepthMap(np.zeros((120, 120)), resolution)
+    em = EllipticalModel(depth_map, 20, fit=_tilted_fit())
+    depth_map.map = np.where(em.interior(), -1.0, 0.0)
+    surface = Surface(depth_map, SurfaceType.SIMPLE_CRATER, 20, em, None)
+    assert surface.observables["V_ex"].value == pytest.approx(em.interior().sum())
+
+
+def test_the_rim_height_follows_a_tilted_ellipse(resolution: SensorResolution) -> None:
+    depth_map = DepthMap(np.zeros((120, 120)), resolution)
+    em = EllipticalModel(depth_map, 20, fit=_tilted_fit())
+    depth_map.map = np.where(em.rim(), 3.0, 0.0)
+    surface = Surface(depth_map, SurfaceType.SIMPLE_CRATER, 20, em, None)
+    assert surface.observables["mean_h_rim"].value == pytest.approx(3.0)
+
+
+def test_the_central_peak_follows_a_tilted_ellipse(resolution: SensorResolution) -> None:
+    depth_map = DepthMap(np.zeros((120, 120)), resolution)
+    em = EllipticalModel(depth_map, 20, fit=_tilted_fit())
+    heights = np.zeros((120, 120))
+    heights[55 + round(35 * np.sin(0.6)), 60 + round(35 * np.cos(0.6))] = 7.0
+    depth_map.map = heights
+    surface = Surface(depth_map, SurfaceType.COMPLEX_CRATER, 20, em, em)
+    assert surface.observables["H_cp"].value == pytest.approx(7.0)
+
+
+def _with_oversized_inner_ellipse(resolution: SensorResolution) -> Surface:
+    heights = np.zeros((120, 120))
+    heights[55, 60] = 7.0
+    depth_map = DepthMap(heights, resolution)
+    rim = EllipticalModel(depth_map, 20, fit=EllipseFit(30.0, 25.0, 60.0, 55.0, 0.0, [(0.0, 0.0)]))
+    inner = EllipticalModel(
+        depth_map, 20, fit=EllipseFit(45.0, 20.0, 60.0, 55.0, 0.0, [(0.0, 0.0)])
+    )
+    return Surface(depth_map, SurfaceType.COMPLEX_CRATER, 20, rim, inner)
+
+
+def test_an_inner_ellipse_larger_than_the_rim_leaves_out_the_central_peak(
+    resolution: SensorResolution, caplog: pytest.LogCaptureFixture
+) -> None:
+    surface = _with_oversized_inner_ellipse(resolution)
+    assert "H_cp" not in surface.observables
+    assert "V_cp" not in surface.observables
+    assert "D" in surface.observables
+    assert "larger than the rim" in caplog.text
+
+
+@pytest.mark.parametrize(("a", "b"), [(30.0, 25.0), (20.0, 15.0)])
+def test_an_inner_ellipse_within_the_rim_keeps_the_central_peak(
+    resolution: SensorResolution, a: float, b: float
+) -> None:
+    depth_map = DepthMap(np.ones((120, 120)), resolution)
+    rim = EllipticalModel(depth_map, 20, fit=EllipseFit(30.0, 25.0, 60.0, 55.0, 0.0, [(0.0, 0.0)]))
+    inner = EllipticalModel(depth_map, 20, fit=EllipseFit(a, b, 60.0, 55.0, 0.0, [(0.0, 0.0)]))
+    surface = Surface(depth_map, SurfaceType.COMPLEX_CRATER, 20, rim, inner)
+    assert {"H_cp", "V_cp"} <= set(surface.observables)
+
+
+def test_a_saved_oversized_inner_ellipse_stays_left_out(
+    resolution: SensorResolution, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "surface.npz"
+    _with_oversized_inner_ellipse(resolution).save(path)
+
+    def fail(*args: object) -> None:
+        raise AssertionError("the ellipse was fitted again")
+
+    monkeypatch.setattr(EllipticalModel, "_compute_ellipse", fail)
+    assert "V_cp" not in Surface.load(path).observables
+
+
+def test_another_type_ignores_an_oversized_inner_ellipse(
+    resolution: SensorResolution, caplog: pytest.LogCaptureFixture
+) -> None:
+    surface = _with_oversized_inner_ellipse(resolution)
+    caplog.clear()
+    surface.set_type(SurfaceType.SIMPLE_CRATER)
+    assert "larger than the rim" not in caplog.text
+
+
+def test_the_synthetic_crater_has_a_stable_inner_ellipse(crater: DepthMap) -> None:
+    surface = Surface.from_depth_map(crater, SurfaceType.COMPLEX_CRATER)
+    assert surface.inner_ellipse is not None
+    assert surface.em is not None
+    assert surface.inner_ellipse.a < 0.7 * surface.em.a

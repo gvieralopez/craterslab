@@ -22,8 +22,8 @@ def crop_img(img: np.ndarray, x: int, y: int, w: int, h: int, gap: int) -> np.nd
 
 def compute_bounding_box(img: np.ndarray, threshold: float) -> tuple[int, int, int, int]:
     """
-    Compute the bounding box of an image for the region in which pixels are
-    |p| > threshold
+    Compute the bounding box of the image region whose pixels have an absolute
+    value above the threshold
     """
     rows, cols = np.nonzero(central_regions(*outer_regions(img, threshold)))
     if rows.size == 0:
@@ -49,8 +49,9 @@ def outer_regions(img: np.ndarray, threshold: float) -> tuple[np.ndarray, int]:
 
 
 def central_regions(regions: np.ndarray, count: int) -> np.ndarray:
-    image_center = tuple((np.asarray(regions.shape) / 2).astype("int32"))
-    max_distance = distance.euclidean(image_center, regions.shape)
+    height, width = regions.shape
+    image_center = (width // 2, height // 2)
+    max_distance = distance.euclidean(image_center, (width, height))
     central = np.zeros(regions.shape, dtype=bool)
     for label in range(1, count + 1):
         region = regions == label

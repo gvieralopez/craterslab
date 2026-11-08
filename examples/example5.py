@@ -1,11 +1,7 @@
 # Craterslab Example Script No. 5:
 # Customizing craterslab plots
 
-from craterslab.classification import SurfaceType
-from craterslab.craters import Surface
-from craterslab.ellipse import EllipseVisualConfig
-from craterslab.sensors import DepthMap
-from craterslab.visuals import plot_3D
+from craterslab import DepthMap, EllipseVisualConfig, Surface, SurfaceType, plot_3D
 
 depth_map = DepthMap.load("examples/data/fluidized_1.npz")
 depth_map.auto_crop()

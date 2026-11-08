@@ -6,7 +6,7 @@ import numpy as np
 from keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 
-from craterslab.classification import SurfaceType
+from craterslab import DepthMap, SurfaceType
 from craterslab.cnn import (
     CLASS_ORDER,
     NUM_CLASSES,
@@ -15,7 +15,6 @@ from craterslab.cnn import (
     normalize,
     save_trained_model,
 )
-from craterslab.sensors import DepthMap
 
 DATA_PATH = Path("examples/data")
 
