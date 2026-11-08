@@ -11,4 +11,5 @@ jobs:
     with:
       cookie-pyrate-ref: v1.1.2
       python-version: "3.11"
-      test-python-versions: '["3.12", "3.13"]'  # TensorFlow has no wheels for 3.14 or 3.15
+      # The classification extra stops at 3.13: TensorFlow has no newer wheels yet
+      test-python-versions: '["3.12", "3.13", "3.14", "3.15"]'

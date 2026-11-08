@@ -1,12 +1,14 @@
 import logging
 import math
+import pathlib
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 
-from craterslab.classification import SurfaceType, get_trained_model, normalize
-from craterslab.ellipse import EllipticalModel
+from craterslab.classification import Classifier, SurfaceType
+from craterslab.ellipse import EllipseFit, EllipticalModel
+from craterslab.profiles import Profile
 from craterslab.sensors import DepthMap
 
 logger = logging.getLogger(__name__)
@@ -14,6 +16,8 @@ logger = logging.getLogger(__name__)
 # Groups of surfaces
 CRATER_SURFACES = [SurfaceType.SIMPLE_CRATER, SurfaceType.COMPLEX_CRATER]
 ALL_KNOWN_SURFACES = [*CRATER_SURFACES, SurfaceType.SAND_MOUND]
+
+DEFAULT_ELLIPSE_POINTS = 20
 
 
 @dataclass
@@ -32,11 +36,19 @@ class Surface:
     Describes a surface found in a Depth Map
     """
 
-    def __init__(self, depth_map: DepthMap, ellipse_points: int = 20) -> None:
+    def __init__(
+        self,
+        depth_map: DepthMap,
+        surface_type: SurfaceType,
+        ellipse_points: int,
+        em: EllipticalModel | None,
+        inner_ellipse: EllipticalModel | None,
+    ) -> None:
         self.dm = depth_map
-        self.em = EllipticalModel(depth_map, ellipse_points)
-        self.max_profile = self.em.max_profile()
-        self.type = self.classify()
+        self.ellipse_points = ellipse_points
+        self.max_profile: Profile | None = None
+        self.em = em
+        self.inner_ellipse = inner_ellipse
 
         self.available_observables: dict[str, dict[str, Any]] = {
             "d_max": {"func": self.d_max, "compute_for": ALL_KNOWN_SURFACES},
@@ -52,12 +64,57 @@ class Surface:
             "V_cp": {"func": self.V_cp, "compute_for": [SurfaceType.COMPLEX_CRATER]},
         }
 
-        self.init_observables()
+        self.set_type(surface_type)
 
-    def init_observables(self) -> None:
-        if self.type == SurfaceType.COMPLEX_CRATER:
-            self.inner_ellipse = EllipticalModel(self.dm, self.em.points, inner=True)
-        self.observables = self.compute_observables()
+    @classmethod
+    def from_depth_map(
+        cls,
+        depth_map: DepthMap,
+        surface_type: SurfaceType = SurfaceType.UNKNOWN,
+        ellipse_points: int = DEFAULT_ELLIPSE_POINTS,
+    ) -> "Surface":
+        return cls(depth_map, surface_type, ellipse_points, None, None)
+
+    @classmethod
+    def load(cls, path: pathlib.Path | str) -> "Surface":
+        """Load a saved surface. A plain depth map file gives an Unknown surface."""
+        depth_map = DepthMap.load(path)
+        with np.load(path) as data:
+            surface_type = SurfaceType.UNKNOWN
+            ellipse_points = DEFAULT_ELLIPSE_POINTS
+            if "surface_type" in data:
+                surface_type = SurfaceType[str(data["surface_type"])]
+                ellipse_points = int(data["ellipse_points"])
+            em = cls._load_ellipse(data, "ellipse", depth_map, ellipse_points)
+            inner_ellipse = cls._load_ellipse(data, "inner_ellipse", depth_map, ellipse_points)
+        return cls(depth_map, surface_type, ellipse_points, em, inner_ellipse)
+
+    @staticmethod
+    def _load_ellipse(
+        data: Any, key: str, depth_map: DepthMap, ellipse_points: int
+    ) -> EllipticalModel | None:
+        if key not in data:
+            return None
+        a, b, cx, cy, theta = data[key].tolist()
+        landmarks = [(x, y) for x, y in data[f"{key}_landmarks"].tolist()]
+        fit = EllipseFit(a, b, cx, cy, theta, landmarks)
+        return EllipticalModel(depth_map, ellipse_points, fit=fit)
+
+    def save(self, path: pathlib.Path | str) -> None:
+        arrays = self.dm.to_arrays()
+        arrays["surface_type"] = self.type.name
+        arrays["ellipse_points"] = self.ellipse_points
+        for key, model in (("ellipse", self.em), ("inner_ellipse", self.inner_ellipse)):
+            if model is not None:
+                arrays[key] = np.array(model.params())
+                arrays[f"{key}_landmarks"] = np.array(model.landmarks)
+        np.savez(path, **arrays)
+
+    @staticmethod
+    def _fitted(model: EllipticalModel | None) -> EllipticalModel:
+        if model is None:
+            raise ValueError("This value needs a surface with a known type")
+        return model
 
     def __repr__(self) -> str:
         output = "\n".join([str(o) for o_id, o in self.observables.items()])
@@ -65,16 +122,21 @@ class Surface:
 
     def set_type(self, surface_type: SurfaceType) -> None:
         self.type = surface_type
-        self.init_observables()
+        self._fit_ellipses()
+        self.observables = self.compute_observables()
 
-    def classify(self) -> SurfaceType:
-        classifier = get_trained_model()
-        if classifier is not None:
-            img = normalize(self.dm.map)
-            class_id = np.argmax(classifier.predict(img))
-            return SurfaceType(class_id)
-        logger.warning("Using default class %s", SurfaceType(1))
-        return SurfaceType(1)
+    def classify(self, classifier: Classifier) -> None:
+        self.set_type(classifier.classify(self.dm))
+
+    def _fit_ellipses(self) -> None:
+        if self.type is SurfaceType.UNKNOWN:
+            self.em = self.inner_ellipse = self.max_profile = None
+            return
+        if self.em is None:
+            self.em = EllipticalModel(self.dm, self.ellipse_points)
+        self.max_profile = self.em.max_profile()
+        if self.type is SurfaceType.COMPLEX_CRATER and self.inner_ellipse is None:
+            self.inner_ellipse = EllipticalModel(self.dm, self.ellipse_points, inner=True)
 
     def compute_observables(self) -> dict[str, Observable]:
         observables = {}
@@ -94,7 +156,7 @@ class Surface:
         x, y = np.ogrid[: self.dm.x_count, : self.dm.y_count]
 
         # calculate the ellipse equation for each point in the grid
-        a, b, x0, y0, theta = self.em.params()
+        a, b, x0, y0, theta = self._fitted(self.em).params()
         x_rot = (x - x0) * np.cos(theta) - (y - y0) * np.sin(theta)  # rotate x coordinates
         y_rot = (x - x0) * np.sin(theta) + (y - y0) * np.cos(theta)  # rotate y coordinates
         result: np.ndarray = ((x_rot) ** 2 / a**2) + ((y_rot) ** 2 / b**2)
@@ -108,7 +170,7 @@ class Surface:
         return np.transpose(self._ellipse() <= 1)
 
     def _inner_z_values(self) -> np.ndarray:
-        a, b, cx, cy, _ = self.inner_ellipse.params()
+        a, b, cx, cy, _ = self._fitted(self.inner_ellipse).params()
         rows, cols = self.dm.map.shape
         x_indices, y_indices = np.meshgrid(np.arange(cols), np.arange(rows))
 
@@ -163,13 +225,14 @@ class Surface:
         return Observable("Max Excavated Depth", "d_exc", val, units)
 
     def epsilon(self) -> Observable:
-        a, b = self.em.a, self.em.b
+        em = self._fitted(self.em)
+        a, b = em.a, em.b
         val = math.sqrt(a**2 - b**2) / a
         units = ""
         return Observable("Eccentricity", "epsilon", val, units)
 
     def D(self) -> Observable:
-        val = self.em.a * 2 * self.dm.x_res
+        val = self._fitted(self.em).a * 2 * self.dm.x_res
         units = self.dm.sensor.scale
         return Observable("Diameter", "D", val, units)
 

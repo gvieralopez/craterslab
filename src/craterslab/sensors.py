@@ -2,6 +2,7 @@ import importlib.util
 import logging
 import pathlib
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import scipy.io
@@ -73,7 +74,6 @@ class DepthMap:
 
     @property
     def heights(self) -> np.ndarray:
-        """The depth map on the real-world z scale."""
         return self.map * self.z_res
 
     @property
@@ -226,15 +226,17 @@ class DepthMap:
         smoothed: np.ndarray = gaussian_filter(result, sigma=2)
         return smoothed
 
+    def to_arrays(self) -> dict[str, Any]:
+        return {
+            "depthmap": self.map,
+            "xres": self.sensor.x,
+            "yres": self.sensor.y,
+            "zres": self.sensor.z,
+            "scale": self.sensor.scale,
+        }
+
     def save(self, path: pathlib.Path | str) -> None:
-        np.savez(
-            path,
-            depthmap=self.map,
-            xres=self.sensor.x,
-            yres=self.sensor.y,
-            zres=self.sensor.z,
-            scale=self.sensor.scale,
-        )
+        np.savez(path, **self.to_arrays())
 
     @classmethod
     def load(cls, path: pathlib.Path | str) -> "DepthMap":

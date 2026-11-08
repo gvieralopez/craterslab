@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import pytest
 
-from craterslab.ellipse import EllipseVisualConfig, EllipticalModel, fit_elipse
+from craterslab.ellipse import EllipseFit, EllipseVisualConfig, EllipticalModel, fit_elipse
 from craterslab.sensors import DepthMap, SensorResolution
 
 
@@ -40,13 +40,11 @@ def test_inner_landmarks_are_inside_the_rim(crater: DepthMap) -> None:
     assert all(np.hypot(x - 50, y - 50) < 30 for x, y in inner.landmarks)
 
 
-def test_too_few_landmarks_skip_the_fit(
+def test_too_few_landmarks_raise(
     resolution: SensorResolution, caplog: pytest.LogCaptureFixture
 ) -> None:
-    with caplog.at_level(logging.ERROR):
-        model = EllipticalModel(DepthMap(np.zeros((30, 30)), resolution), 20)
-    assert model.landmarks == []
-    assert not hasattr(model, "a")
+    with caplog.at_level(logging.ERROR), pytest.raises(ValueError, match="landmarks"):
+        EllipticalModel(DepthMap(np.zeros((30, 30)), resolution), 20)
     assert "Not sufficient landmarks" in caplog.text
 
 
@@ -73,3 +71,10 @@ def test_default_patch(crater: DepthMap) -> None:
 def test_max_profile(crater: DepthMap) -> None:
     profile = EllipticalModel(crater, 20).max_profile()
     assert len(profile) == 1000
+
+
+def test_a_given_fit_is_used_as_it_is(crater: DepthMap) -> None:
+    fit = EllipseFit(5.0, 4.0, 50.0, 51.0, 0.1, [(1.0, 2.0)])
+    model = EllipticalModel(crater, 20, fit=fit)
+    assert model.params() == (5.0, 4.0, 50.0, 51.0, 0.1)
+    assert model.landmarks == [(1.0, 2.0)]

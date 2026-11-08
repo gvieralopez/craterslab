@@ -1,6 +1,6 @@
 [project]
 name = "craterslab"
-version = "0.2.11-beta0"
+version = "0.3.0-beta0"
 description = "A library to simplify the analysis of crater data from depth maps."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,7 +22,10 @@ dependencies = [
     "opencv-python>=4.8.0",
     "scipy>=1.11.1",
     "matplotlib>=3.7.2",
-    "scikit-learn>=1.3.0",
+]
+
+[project.optional-dependencies]
+classification = [
     "keras>=3.0.0",
     "tensorflow>=2.13.0",
 ]
@@ -41,6 +44,10 @@ dev = [
     "pytest-env>=1.8",
     "ruff>=0.17",
     "ebump>=0.2.2",
+    # TensorFlow has no wheels for Python 3.14 or newer yet
+    "keras>=3.0.0; python_version < '3.14'",
+    "tensorflow>=2.13.0; python_version < '3.14'",
+    "scikit-learn>=1.3.0; python_version < '3.14'",  # scripts/train_classifier.py
 ]
 
 

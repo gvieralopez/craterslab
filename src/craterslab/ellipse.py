@@ -57,6 +57,16 @@ def fit_elipse(
     return a, b, cx, cy, theta
 
 
+@dataclass(frozen=True)
+class EllipseFit:
+    a: float
+    b: float
+    cx: float
+    cy: float
+    theta: float
+    landmarks: list[Point]
+
+
 @dataclass
 class EllipseVisualConfig:
     color: str = "red"
@@ -70,7 +80,9 @@ class EllipticalModel:
     Computes an ellipse that fits the crater rims on a depth map
     """
 
-    def __init__(self, depth_map: DepthMap, points: int, inner: bool = False) -> None:
+    def __init__(
+        self, depth_map: DepthMap, points: int, inner: bool = False, fit: EllipseFit | None = None
+    ) -> None:
         if not points % 2 == 0:
             raise ValueError("The value of points needs to be even")
         if points < MIN_REQ_POINTS:
@@ -79,9 +91,14 @@ class EllipticalModel:
         self.dm = depth_map
         self.points = points
         self.visual = EllipseVisualConfig(z_val=np.max(depth_map.map))
+        if fit is not None:
+            self.a, self.b, self.cx, self.cy, self.theta = fit.a, fit.b, fit.cx, fit.cy, fit.theta
+            self.landmarks = fit.landmarks
+            return
         self._compute_landmark_points(points, inner)
-        if self._validate_landmark_points():
-            self._compute_ellipse()
+        if not self._validate_landmark_points():
+            raise ValueError("Not sufficient landmarks for fitting the elliptical model")
+        self._compute_ellipse()
 
     def _compute_landmark_points(self, points: int, inner: bool) -> None:
         bounds = self._compute_bounds(points)

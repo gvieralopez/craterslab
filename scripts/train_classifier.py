@@ -6,9 +6,11 @@ import numpy as np
 from keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 
-from craterslab.classification import (
+from craterslab.classification import SurfaceType
+from craterslab.cnn import (
+    CLASS_ORDER,
     NUM_CLASSES,
-    get_trained_model,
+    CNNClassifier,
     get_untrained_model,
     normalize,
     save_trained_model,
@@ -29,10 +31,22 @@ COMPLEX_INDICIES = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 2
 
 # Define the categories and their corresponding file names and ids
 categories: dict[str, dict[str, Any]] = {
-    "empty": {"files": [f"plane_{i}.npz" for i in range(1, 17)], "id": 0},
-    "simple_craters": {"files": [f"fluidized_{i}.npz" for i in SIMPLE_INDICIES], "id": 1},
-    "complex_craters": {"files": [f"fluidized_{i}.npz" for i in COMPLEX_INDICIES], "id": 2},
-    "sand_mounds": {"files": [f"compacted_{i}.npz" for i in range(1, 25)], "id": 3},
+    "empty": {
+        "files": [f"plane_{i}.npz" for i in range(1, 17)],
+        "id": CLASS_ORDER.index(SurfaceType.UNKNOWN),
+    },
+    "simple_craters": {
+        "files": [f"fluidized_{i}.npz" for i in SIMPLE_INDICIES],
+        "id": CLASS_ORDER.index(SurfaceType.SIMPLE_CRATER),
+    },
+    "complex_craters": {
+        "files": [f"fluidized_{i}.npz" for i in COMPLEX_INDICIES],
+        "id": CLASS_ORDER.index(SurfaceType.COMPLEX_CRATER),
+    },
+    "sand_mounds": {
+        "files": [f"compacted_{i}.npz" for i in range(1, 25)],
+        "id": CLASS_ORDER.index(SurfaceType.SAND_MOUND),
+    },
 }
 
 
@@ -76,9 +90,7 @@ model.fit(train_images, train_labels, epochs=NUM_EPOCHS, batch_size=BATCH_SIZE)
 save_trained_model(model)
 
 # Load the model from the file
-model = get_trained_model()
-if model is None:
-    raise SystemExit("The trained model could not be loaded")
+model = CNNClassifier().model
 
 # Test the model on the test set
 test_loss, test_acc = model.evaluate(test_images, test_labels)
