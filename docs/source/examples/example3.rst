@@ -64,7 +64,7 @@ crater. We can check the value of its observables by:
    Apparent Depth (d_max): -15.91 mm
    Eccentricity (epsilon): 0.38 
    Diameter (D): 99.19 mm
-   Maximum heigh (H_cp): 3.00 mm
+   Maximum heigh (H_m): 3.00 mm
    Mean Heigh over the rim (mean_h_rim): 1.61 mm
    Concavity Volume (V_in): 65334.24 mm³
    Excavated Volume (V_ex): 27954.53 mm³

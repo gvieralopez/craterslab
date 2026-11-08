@@ -186,7 +186,7 @@ class Surface:
     def H_m(self) -> Observable:
         val = self._H_max()
         units = self.dm.sensor.scale
-        return Observable("Maximum heigh", "H_cp", val, units)
+        return Observable("Maximum heigh", "H_m", val, units)
 
     def mean_h_rim(self) -> Observable:
         val = self._mean_h_rim()

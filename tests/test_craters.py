@@ -78,3 +78,7 @@ def test_excess_volume_uses_all_three_resolutions(crater: DepthMap) -> None:
     block[:4, :5] = 8.0
     surface.dm = DepthMap(block, SensorResolution(2.0, 3.0, 0.5, "cm"))
     assert surface.V_exc().value == pytest.approx(20 * 4.0 * 6.0)
+
+
+def test_maximum_height_has_its_own_symbol(crater: DepthMap) -> None:
+    assert Surface(crater).H_m().symbol == "H_m"
